@@ -16,9 +16,9 @@ app = modal.App("spottr-detection")
 image = (
     modal.Image.debian_slim(python_version="3.11")
     .pip_install(
-        "ultralytics==8.3.0",
-        "torch==2.4.0",
-        "torchvision==0.19.0",
+        "ultralytics>=8.3.0",
+        "torch>=2.5.1",
+        "torchvision>=0.20.0",
         "pillow",
         "numpy",
         "shapely>=2.0",
@@ -27,6 +27,7 @@ image = (
         "opencv-python-headless",
         "scikit-learn",
         "fastapi[standard]",
+        "sam2==1.1.0",
     )
     .apt_install("libgl1", "libglib2.0-0")
 )
@@ -142,22 +143,18 @@ def detect_stripes_sam2(img_bytes: bytes):
     to find parking stripe candidates.
     Returns list of stripe mask dicts with pixel bounding boxes.
     """
-    import io, numpy as np
+    import io, os
+    import numpy as np
     from PIL import Image
 
     try:
         import torch
         from sam2.automatic_mask_generator import SAM2AutomaticMaskGenerator
-        from sam2.build_sam import build_sam2
-        import os
+        from sam2.build_sam import build_sam2_hf
 
-        os.environ["HUGGINGFACE_TOKEN"] = os.environ.get("HF_TOKEN", "")
-
-        # Load SAM2 large from HF hub
-        sam2 = build_sam2(
-            "sam2_hiera_large.yaml",
-            "https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_large.pt",
-        )
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        # build_sam2_hf handles config resolution + checkpoint download from HF
+        sam2 = build_sam2_hf("facebook/sam2.1-hiera-large", device=device)
         mask_gen = SAM2AutomaticMaskGenerator(
             sam2,
             points_per_side=32,

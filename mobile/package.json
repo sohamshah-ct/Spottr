@@ -1,0 +1,30 @@
+{
+  "name": "spottr",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "@react-navigation/native": "^6.1.18",
+    "@react-navigation/native-stack": "^6.9.26",
+    "expo": "~54.0.34",
+    "expo-status-bar": "~2.0.1",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-maps": "^1.20.1",
+    "react-native-safe-area-context": "^5.4.0",
+    "react-native-screens": "^4.5.0",
+    "zustand": "^5.0.5"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.0",
+    "@types/react": "~19.0.10",
+    "typescript": "~5.6.3",
+    "babel-preset-expo": "~13.0.0"
+  },
+  "private": true
+}
