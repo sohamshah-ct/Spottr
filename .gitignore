@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+.expo/
+
+# Env files
+.env
+*.local
+
+# Build outputs
+dist/
+build/
+.expo-shared/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Railway
+.railway/

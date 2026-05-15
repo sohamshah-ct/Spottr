@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SPOTTR — Design Reference</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Syne+Mono&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root {
+  --bg: #080A0F;
+  --surface: #0F1218;
+  --surface2: #161B24;
+  --surface3: #1E2530;
+  --green: #00E676;
+  --green-dim: rgba(0,230,118,0.10);
+  --green-glow: rgba(0,230,118,0.20);
+  --amber: #FFB300;
+  --amber-dim: rgba(255,179,0,0.10);
+  --red: #FF3D57;
+  --red-dim: rgba(255,61,87,0.08);
+  --blue: #2979FF;
+  --ink: #F2F0EC;
+  --ink2: #A8A8B8;
+  --ink3: #505060;
+  --border: rgba(255,255,255,0.06);
+  --border2: rgba(255,255,255,0.10);
+}
+
+html,body{
+  background:#050508;
+  font-family:'Syne',sans-serif;
+  color:var(--ink);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+
+/* ── PAGE LAYOUT ── */
+.page-wrap{
+  max-width:1400px;
+  margin:0 auto;
+  padding:48px 40px 80px;
+}
+
+.page-header{
+  display:flex;align-items:baseline;gap:20px;
+  margin-bottom:56px;
+}
+.brand{
+  font-size:28px;font-weight:800;
+  letter-spacing:0.12em;color:var(--green);
+}
+.subtitle{
+  font-family:'Syne Mono',monospace;
+  font-size:12px;color:var(--ink3);
+  letter-spacing:0.1em;
+}
+
+/* screens grid */
+.screens{
+  display:flex;gap:28px;
+  overflow-x:auto;
+  padding-bottom:20px;
+  align-items:flex-start;
+}
+.col{
+  display:flex;flex-direction:column;
+  gap:12px;flex-shrink:0;
+  align-items:center;
+}
+.screen-label{
+  font-family:'Syne Mono',monospace;
+  font-size:10px;letter-spacing:0.15em;
+  color:var(--ink3);text-transform:uppercase;
+}
+
+/* ── PHONE SHELL ── */
+.phone{
+  width:320px;height:680px;
+  background:var(--bg);
+  border-radius:42px;
+  border:1.5px solid rgba(255,255,255,0.08);
+  box-shadow:
+    0 0 0 6px rgba(255,255,255,0.02),
+    0 32px 80px rgba(0,0,0,0.7),
+    0 0 60px rgba(0,230,118,0.03);
+  position:relative;overflow:hidden;
+  display:flex;flex-direction:column;
+}
+.phone::before{
+  content:'';
+  position:absolute;top:12px;left:50%;
+  transform:translateX(-50%);
+  width:88px;height:5px;
+  background:rgba(255,255,255,0.08);
+  border-radius:3px;z-index:100;
+}
+.screen{
+  position:absolute;inset:0;
+  border-radius:42px;overflow:hidden;
+  display:flex;flex-direction:column;
+  background:var(--bg);
+}
+
+/* ── SHARED ── */
+.sb{
+  display:flex;justify-content:space-between;
+  padding:52px 20px 0;flex-shrink:0;
+  font-family:'Syne Mono',monospace;
+  font-size:11px;font-weight:600;color:var(--ink);
+}
+.sb-r{opacity:0.3;font-size:11px}
+.blink-dot{
+  display:inline-block;width:5px;height:5px;
+  border-radius:50%;background:var(--green);
+  animation:blink 2s ease-in-out infinite;
+  vertical-align:middle;margin-right:4px;
+}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.2}}
+
+/* ════════════════════════════
+   SCREEN 1 — SPLASH
+════════════════════════════ */
+.splash{
+  background:var(--bg);
+  align-items:center;justify-content:center;
+  gap:0;
+}
+.splash-body{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:0 32px;
+}
+.splash-icon-wrap{
+  width:82px;height:82px;
+  background:var(--green-dim);
+  border-radius:26px;
+  border:1px solid var(--green-glow);
+  display:flex;align-items:center;justify-content:center;
+  font-size:38px;margin-bottom:28px;
+  box-shadow:0 0 40px rgba(0,230,118,0.12);
+}
+.splash-word{
+  font-size:42px;font-weight:800;
+  letter-spacing:0.22em;color:var(--ink);
+  margin-bottom:10px;text-align:center;
+}
+.splash-tag{
+  font-size:13px;color:var(--ink2);
+  font-weight:500;text-align:center;
+  line-height:1.55;max-width:200px;
+}
+.splash-hint{
+  font-family:'Syne Mono',monospace;
+  font-size:11px;color:var(--ink3);
+  letter-spacing:0.1em;margin-top:48px;
+}
+
+/* ════════════════════════════
+   SCREEN 2 — ONBOARDING
+════════════════════════════ */
+.ob-screen{background:var(--bg)}
+.ob-body{
+  flex:1;display:flex;flex-direction:column;
+  padding:24px 24px 0;
+}
+.ob-hero-img{
+  height:160px;border-radius:20px;
+  overflow:hidden;margin-bottom:20px;
+  background:var(--surface);
+  flex-shrink:0;position:relative;
+}
+.ob-hero-img svg{width:100%;height:100%}
+
+.ob-dots{
+  display:flex;gap:6px;justify-content:center;
+  margin-bottom:18px;
+}
+.ob-dot{
+  height:4px;border-radius:2px;
+  background:var(--ink3);transition:all 0.3s;width:20px;
+}
+.ob-dot.on{background:var(--green);width:28px}
+
+.ob-headline{
+  font-size:28px;font-weight:800;
+  letter-spacing:-0.02em;line-height:1.1;
+  margin-bottom:10px;color:var(--ink);
+}
+.ob-headline span{color:var(--green)}
+.ob-body-text{
+  font-size:14px;color:var(--ink2);
+  font-weight:500;line-height:1.55;
+  margin-bottom:24px;flex:1;
+}
+.ob-feats{
+  display:flex;gap:8px;margin-bottom:20px;
+}
+.ob-feat{
+  flex:1;background:var(--surface);
+  border-radius:14px;padding:12px 8px;
+  text-align:center;border:1px solid var(--border);
+}
+.ob-feat-icon{font-size:20px;margin-bottom:4px}
+.ob-feat-label{
+  font-size:10px;font-weight:700;
+  color:var(--ink2);line-height:1.3;
+}
+.ob-cta{
+  padding:14px;background:var(--green);
+  border-radius:16px;text-align:center;
+  font-size:15px;font-weight:800;
+  color:#000;margin-bottom:10px;
+  letter-spacing:0.02em;
+}
+.ob-skip{
+  text-align:center;font-family:'Syne Mono',monospace;
+  font-size:10px;color:var(--ink3);
+  padding-bottom:28px;letter-spacing:0.08em;
+}
+
+/* ════════════════════════════
+   SCREEN 3 — HOME
+════════════════════════════ */
+.home-screen{background:var(--bg)}
+.home-scroll{flex:1;overflow:hidden}
+.home-pad{padding:14px 18px 20px}
+
+.greeting-small{
+  font-family:'Syne Mono',monospace;
+  font-size:10px;color:var(--ink3);
+  letter-spacing:0.14em;text-transform:uppercase;
+  margin-bottom:3px;
+  display:flex;align-items:center;gap:6px;
+}
+.home-title{
+  font-size:28px;font-weight:800;
+  letter-spacing:-0.02em;margin-bottom:18px;
+  color:var(--ink);
+}
+
+/* best time strip */
+.btb{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:14px;padding:11px 14px;
+  display:flex;align-items:center;gap:10px;
+  margin-bottom:18px;
+}
+.btb-icon{
+  width:36px;height:36px;border-radius:10px;
+  background:#1A1508;
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;flex-shrink:0;
+}
+.btb-t{font-size:12px;font-weight:700;margin-bottom:1px;color:var(--ink)}
+.btb-s{font-size:11px;color:var(--ink2);font-weight:500}
+
+.sec-label{
+  font-family:'Syne Mono',monospace;
+  font-size:9px;letter-spacing:0.16em;
+  text-transform:uppercase;color:var(--ink3);
+  margin-bottom:10px;
+}
+
+/* freq cards */
+.freq-row{
+  display:flex;gap:10px;margin-bottom:18px;
+  overflow-x:hidden;
+}
+.freq-card{
+  flex-shrink:0;width:132px;
+  background:var(--surface);border-radius:16px;
+  padding:13px;border:1px solid var(--border);
+}
+.freq-card.oc{border-color:rgba(0,230,118,0.18)}
+.freq-icon{font-size:18px;margin-bottom:7px}
+.freq-name{font-size:12px;font-weight:700;margin-bottom:1px;color:var(--ink)}
+.freq-meta{font-size:10px;color:var(--ink3);margin-bottom:7px}
+.freq-n{font-size:22px;font-weight:800;line-height:1;letter-spacing:-0.02em}
+.freq-l{font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink3)}
+.freq-upd{
+  font-family:'Syne Mono',monospace;
+  font-size:9px;color:var(--ink3);
+  margin-top:6px;padding-top:6px;
+  border-top:1px solid var(--border);
+}
+
+/* nearby list */
+.nl-item{
+  background:var(--surface);border-radius:14px;
+  border:1px solid var(--border);
+  padding:11px 12px;
+  display:flex;align-items:center;gap:10px;
+  margin-bottom:7px;
+}
+.nl-item.pick{border-color:rgba(0,230,118,0.22)}
+.nl-ava{
+  width:44px;height:44px;border-radius:12px;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  flex-shrink:0;gap:0;
+}
+.nl-n{font-size:18px;font-weight:800;line-height:1;letter-spacing:-0.02em}
+.nl-l{font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink3)}
+.nl-nm{font-size:13px;font-weight:700;margin-bottom:2px;color:var(--ink)}
+.nl-mt{font-size:10px;color:var(--ink3);font-weight:500}
+.nl-arr{font-size:16px;color:var(--ink3);margin-left:auto}
+
+/* ════════════════════════════
+   SCREEN 4 — LOT DETAIL
+════════════════════════════ */
+.detail-screen{background:var(--surface)}
+
+.sat-hero{
+  height:210px;position:relative;
+  overflow:hidden;flex-shrink:0;
+}
+.sat-hero svg{width:100%;height:100%;display:block}
+
+.hero-back{
+  position:absolute;top:54px;left:14px;
+  width:32px;height:32px;
+  background:rgba(8,10,15,0.6);
+  backdrop-filter:blur(10px);
+  border-radius:10px;border:none;
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;z-index:10;
+  box-shadow:0 2px 8px rgba(0,0,0,0.3);
+  color:var(--ink);
+}
+.live-badge{
+  position:absolute;top:54px;right:14px;
+  background:rgba(8,10,15,0.6);
+  backdrop-filter:blur(10px);
+  border-radius:9px;padding:5px 10px;
+  font-family:'Syne Mono',monospace;
+  font-size:10px;font-weight:600;
+  color:var(--green);z-index:10;
+  display:flex;align-items:center;gap:5px;
+  letter-spacing:0.06em;
+}
+
+/* view toggle */
+.view-toggle{
+  position:absolute;bottom:12px;left:50%;
+  transform:translateX(-50%);
+  background:rgba(8,10,15,0.75);
+  backdrop-filter:blur(14px);
+  border-radius:20px;padding:3px;
+  display:flex;z-index:20;
+  border:1px solid rgba(255,255,255,0.08);
+}
+.vt-btn{
+  padding:5px 14px;border-radius:16px;
+  font-family:'Syne',sans-serif;
+  font-size:10px;font-weight:700;
+  letter-spacing:0.04em;
+  color:rgba(255,255,255,0.35);
+  background:transparent;
+  display:flex;align-items:center;gap:4px;
+  transition:all 0.2s;
+}
+.vt-btn.on{background:var(--surface);color:var(--ink)}
+.vt-dot{
+  width:4px;height:4px;border-radius:50%;
+  background:var(--green);
+  animation:blink 2s ease-in-out infinite;
+}
+
+.detail-scroll{flex:1;overflow:hidden}
+.detail-pad{padding:16px 18px 0}
+
+.detail-title-row{
+  display:flex;align-items:flex-start;
+  justify-content:space-between;margin-bottom:2px;
+}
+.detail-name{
+  font-size:22px;font-weight:800;
+  letter-spacing:-0.02em;color:var(--ink);
+}
+.detail-sub{
+  font-size:12px;color:var(--ink3);
+  font-weight:500;margin-bottom:14px;
+}
+
+/* best time in detail */
+.det-btb{
+  background:linear-gradient(135deg,#1A1200,#221800);
+  border:1px solid rgba(255,179,0,0.15);
+  border-radius:12px;padding:10px 12px;
+  display:flex;align-items:center;gap:8px;
+  margin-bottom:14px;
+}
+.det-btb-t{font-size:12px;font-weight:700;color:#FFB300}
+.det-btb-s{font-size:10px;color:rgba(255,179,0,0.6);font-weight:500;margin-top:1px}
+
+/* row cards */
+.rows{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.rc{
+  background:var(--bg);border-radius:14px;
+  padding:11px 12px;
+  display:flex;align-items:center;gap:10px;
+  border:1.5px solid transparent;
+}
+.rc.sel{border-color:var(--green);background:rgba(0,230,118,0.04)}
+.rc-ava{
+  width:40px;height:40px;border-radius:10px;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.rc-n{font-size:18px;font-weight:800;line-height:1;letter-spacing:-0.02em}
+.rc-l{font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink3)}
+.rc-nm{font-size:13px;font-weight:700;margin-bottom:1px;color:var(--ink)}
+.rc-mt{font-size:10px;color:var(--ink3);font-weight:500}
+.conf{
+  font-size:9px;font-weight:700;
+  padding:2px 7px;border-radius:6px;
+  flex-shrink:0;
+}
+.conf.hi{background:var(--green-dim);color:#00C853}
+.conf.md{background:var(--amber-dim);color:#FFB300}
+.conf.lo{background:var(--surface3);color:var(--ink3)}
+.best-tag{
+  background:var(--ink);color:var(--bg);
+  border-radius:6px;padding:2px 7px;
+  font-size:9px;font-weight:800;
+  flex-shrink:0;
+}
+.mapbtn{
+  width:30px;height:30px;
+  background:var(--surface2);
+  border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;color:var(--ink);
+  border:1px solid var(--border2);
+  flex-shrink:0;
+}
+
+/* forecast */
+.fc-bars{
+  display:flex;gap:4px;align-items:flex-end;
+  height:44px;margin-bottom:4px;
+}
+.fcc{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+.fct{flex:1;width:100%;background:var(--surface3);border-radius:4px;display:flex;align-items:flex-end;overflow:hidden}
+.fcb{width:100%;border-radius:4px}
+.fcl{font-family:'Syne Mono',monospace;font-size:8px;color:var(--ink3)}
+.fcl.now{color:var(--ink)}
+
+/* footer */
+.det-footer{
+  padding:10px 18px 24px;
+  background:var(--surface);
+  border-top:1px solid var(--border);
+  flex-shrink:0;
+}
+.take-btn{
+  width:100%;padding:15px;
+  background:var(--green);color:#000;
+  border-radius:16px;text-align:center;
+  font-size:15px;font-weight:800;
+  letter-spacing:-0.01em;
+}
+.take-btn-sub{
+  font-family:'Syne Mono',monospace;
+  font-size:9px;font-weight:600;
+  opacity:0.5;margin-top:2px;
+}
+
+/* ════════════════════════════
+   SCREEN 5 — DRIVING
+════════════════════════════ */
+.drive-screen{background:var(--bg)}
+.drive-map{flex:1;position:relative;overflow:hidden}
+.drive-map svg{width:100%;height:100%;display:block}
+
+.eta-float{
+  position:absolute;top:64px;left:10px;right:10px;
+  background:var(--surface);
+  border-radius:18px;padding:12px 16px;
+  display:flex;align-items:center;gap:12px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.5);
+  z-index:30;border:1px solid var(--border);
+}
+.eta-n{
+  font-size:34px;font-weight:900;
+  letter-spacing:-0.04em;line-height:1;
+  color:var(--ink);
+}
+.eta-u{font-size:13px;font-weight:500;color:var(--ink3);margin-left:2px}
+.eta-dest{font-size:13px;font-weight:700;margin-bottom:1px;color:var(--ink)}
+.eta-coord{font-family:'Syne Mono',monospace;font-size:9px;color:var(--ink3)}
+.eta-spots{text-align:center;flex-shrink:0}
+.eta-sn{font-size:20px;font-weight:900;color:var(--green);line-height:1;letter-spacing:-0.02em}
+.eta-sl{font-family:'Syne Mono',monospace;font-size:8px;color:var(--ink3);text-transform:uppercase;letter-spacing:0.05em}
+
+.mon-strip{
+  position:absolute;bottom:185px;left:10px;right:10px;
+  background:rgba(15,18,24,0.92);
+  backdrop-filter:blur(12px);
+  border-radius:12px;padding:9px 13px;
+  display:flex;align-items:center;gap:9px;
+  border:1px solid var(--border);
+  z-index:30;
+}
+.ms-m{font-size:11px;font-weight:700;color:var(--ink)}
+.ms-s{font-size:10px;color:var(--ink3);font-weight:500}
+.ms-c{
+  font-family:'Syne Mono',monospace;
+  font-size:12px;font-weight:700;
+  color:var(--green);white-space:nowrap;
+  margin-left:auto;
+}
+
+.car-pin{
+  position:absolute;font-size:22px;
+  top:68%;left:15%;z-index:20;
+  filter:drop-shadow(0 3px 6px rgba(0,0,0,0.4));
+}
+.dest-pin{
+  position:absolute;top:34%;left:52%;
+  z-index:20;
+}
+.dp-body{
+  width:36px;height:36px;
+  background:var(--ink);
+  border-radius:50% 50% 50% 0;
+  transform:rotate(-45deg);
+  border:2.5px solid var(--bg);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 12px rgba(0,0,0,0.4);
+}
+.dp-i{transform:rotate(45deg);font-size:13px;font-weight:900;color:var(--bg);font-family:'Syne Mono',monospace}
+
+.step-card{
+  background:var(--surface);
+  border-radius:24px 24px 0 0;
+  padding:0 18px 24px;
+  flex-shrink:0;
+  border-top:1px solid var(--border);
+}
+.sc-h{width:32px;height:3px;background:var(--surface3);border-radius:2px;margin:9px auto 12px}
+.sc-row{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.sc-ic{
+  width:44px;height:44px;background:var(--bg);
+  border-radius:14px;display:flex;align-items:center;
+  justify-content:center;font-size:20px;flex-shrink:0;
+}
+.sc-m{font-size:15px;font-weight:700;color:var(--ink);margin-bottom:1px}
+.sc-s{font-size:12px;color:var(--ink3);font-weight:500}
+.sim-btn{
+  width:100%;padding:11px;
+  background:rgba(255,179,0,0.08);
+  border:1px solid rgba(255,179,0,0.2);
+  border-radius:12px;
+  font-size:12px;font-weight:700;color:#FFB300;
+  margin-bottom:7px;
+}
+.cancel-btn{
+  width:100%;padding:11px;
+  background:var(--surface3);color:var(--ink3);
+  border-radius:12px;
+  font-size:13px;font-weight:600;
+}
+
+/* ════════════════════════════
+   SCREEN 6 — REROUTE
+════════════════════════════ */
+.reroute-screen{background:var(--surface);justify-content:space-between}
+.alert-top{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:0 22px;
+}
+.alert-icon{
+  width:72px;height:72px;
+  background:rgba(255,179,0,0.08);
+  border:1px solid rgba(255,179,0,0.2);
+  border-radius:22px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:32px;margin-bottom:16px;
+}
+.alert-title{
+  font-size:25px;font-weight:800;
+  letter-spacing:-0.02em;text-align:center;
+  margin-bottom:8px;color:var(--ink);
+}
+.alert-copy{
+  font-size:14px;color:var(--ink2);
+  font-weight:500;text-align:center;
+  line-height:1.55;margin-bottom:22px;
+}
+.alert-copy b{color:var(--ink);font-weight:700}
+.cmp{
+  width:100%;background:var(--bg);
+  border-radius:16px;overflow:hidden;
+  border:1px solid var(--border);
+}
+.cr{display:flex;align-items:center;gap:10px;padding:12px 14px}
+.cr+.cr{border-top:1px solid var(--border)}
+.cr.was{opacity:0.35}
+.cr-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--ink3);margin-bottom:1px}
+.cr-v{font-size:13px;font-weight:700;color:var(--ink)}
+.cr-v.st{text-decoration:line-through}
+.cbdg{padding:3px 8px;border-radius:7px;font-size:10px;font-weight:700;flex-shrink:0}
+.cbdg.fu{background:var(--red-dim);color:var(--red)}.cbdg.op{background:var(--green-dim);color:#00C853}
+.alert-btns{padding:14px 22px 28px;display:flex;flex-direction:column;gap:7px}
+.rrb{
+  width:100%;padding:15px;
+  background:var(--green);color:#000;
+  border-radius:16px;
+  font-size:15px;font-weight:800;
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+}
+.rrs{font-family:'Syne Mono',monospace;font-size:9px;font-weight:600;opacity:0.5}
+.cc-btn{
+  width:100%;padding:11px;
+  background:var(--surface3);color:var(--ink3);
+  border-radius:12px;font-size:13px;font-weight:600;
+}
+
+/* ════════════════════════════
+   SCREEN 7 — PARKED
+════════════════════════════ */
+.parked-screen{background:var(--bg);align-items:center;justify-content:center}
+.pk-wrap{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:0 26px;
+}
+.pk-ring{
+  width:96px;height:96px;border-radius:50%;
+  background:var(--green);
+  display:flex;align-items:center;justify-content:center;
+  font-size:42px;margin-bottom:20px;
+  box-shadow:0 0 0 16px var(--green-dim),0 0 0 32px rgba(0,230,118,0.04);
+}
+.pk-title{
+  font-size:32px;font-weight:900;
+  letter-spacing:-0.025em;margin-bottom:6px;
+  color:var(--ink);text-align:center;
+}
+.pk-sub{font-size:13px;color:var(--ink2);font-weight:500;text-align:center;line-height:1.5;margin-bottom:26px}
+.pk-stats{display:flex;gap:9px;width:100%;margin-bottom:22px}
+.ps{
+  flex:1;background:var(--surface);
+  border-radius:14px;padding:12px 8px;
+  text-align:center;border:1px solid var(--border);
+}
+.ps-n{font-size:22px;font-weight:900;letter-spacing:-0.03em;line-height:1;margin-bottom:2px;color:var(--ink)}
+.ps-l{font-family:'Syne Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink3)}
+.pk-acts{width:100%;display:flex;flex-direction:column;gap:8px}
+.rem-btn{
+  width:100%;padding:13px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:14px;font-size:13px;font-weight:700;
+  color:var(--ink);display:flex;align-items:center;
+  justify-content:center;gap:7px;
+}
+.done-btn{
+  width:100%;padding:15px;
+  background:var(--green);color:#000;
+  border-radius:16px;font-size:15px;font-weight:800;
+}
+
+/* ── DESIGN TOKENS PANEL ── */
+.tokens-section{
+  margin-top:56px;
+  background:var(--surface);border-radius:20px;
+  padding:32px 28px;border:1px solid var(--border);
+}
+.tokens-title{
+  font-size:11px;font-weight:700;text-transform:uppercase;
+  letter-spacing:0.16em;color:var(--ink3);
+  margin-bottom:24px;font-family:'Syne Mono',monospace;
+}
+.tokens-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+  gap:20px;
+}
+.token-group{}
+.token-group-label{
+  font-family:'Syne Mono',monospace;
+  font-size:9px;letter-spacing:0.14em;color:var(--ink3);
+  text-transform:uppercase;margin-bottom:10px;
+}
+.token-item{
+  display:flex;align-items:center;gap:10px;margin-bottom:8px;
+}
+.token-swatch{
+  width:28px;height:28px;border-radius:6px;
+  flex-shrink:0;border:1px solid rgba(255,255,255,0.06);
+}
+.token-name{font-family:'Syne Mono',monospace;font-size:11px;color:var(--ink2)}
+.token-val{font-family:'Syne Mono',monospace;font-size:10px;color:var(--ink3)}
+
+/* ── SPEC NOTES ── */
+.spec-section{
+  margin-top:32px;
+  background:var(--surface);border-radius:20px;
+  padding:32px 28px;border:1px solid var(--border);
+}
+.spec-grid{
+  display:grid;grid-template-columns:1fr 1fr 1fr;
+  gap:24px;
+}
+.spec-item{}
+.spec-label{
+  font-family:'Syne Mono',monospace;
+  font-size:9px;letter-spacing:0.14em;color:var(--green);
+  text-transform:uppercase;margin-bottom:8px;
+}
+.spec-value{font-size:13px;color:var(--ink2);line-height:1.5;font-weight:500}
+.spec-value code{
+  font-family:'Syne Mono',monospace;
+  font-size:11px;color:var(--ink);
+  background:var(--surface3);padding:2px 6px;
+  border-radius:4px;
+}
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <div class="page-header">
+    <div class="brand">SPOTTR</div>
+    <div class="subtitle">// design reference v1.0 — for claude code implementation</div>
+  </div>
+
+  <div class="screens">
+
+    <!-- ══ SPLASH ══ -->
+    <div class="col">
+      <div class="phone">
+        <div class="screen splash">
+          <div class="splash-body">
+            <div class="splash-icon-wrap">🛰️</div>
+            <div class="splash-word">SPOTTR</div>
+            <div class="splash-tag">See every open parking spot before you arrive</div>
+            <div class="splash-hint">tap to begin →</div>
+          </div>
+        </div>
+      </div>
+      <div class="screen-label">01 · Splash</div>
+    </div>
+
+    <!-- ══ ONBOARDING ══ -->
+    <div class="col">
+      <div class="phone">
+        <div class="screen ob-screen">
+          <div class="sb"><span>9:41</span><span class="sb-r">●●●● 87%</span></div>
+          <div class="ob-body">
+            <div class="ob-hero-img">
+              <svg viewBox="0 0 320 160" preserveAspectRatio="xMidYMid slice">
+                <rect width="320" height="160" fill="#0F1218"/>
+                <line x1="10" y1="40" x2="310" y2="40" stroke="#1E2530" stroke-width="0.8"/>
+                <line x1="10" y1="80" x2="310" y2="80" stroke="#1E2530" stroke-width="0.8"/>
+                <line x1="10" y1="120" x2="310" y2="120" stroke="#1E2530" stroke-width="0.8"/>
+                <line x1="80" y1="10" x2="80" y2="150" stroke="#1E2530" stroke-width="0.6"/>
+                <line x1="150" y1="10" x2="150" y2="150" stroke="#1E2530" stroke-width="0.6"/>
+                <line x1="220" y1="10" x2="220" y2="150" stroke="#1E2530" stroke-width="0.6"/>
+                <line x1="290" y1="10" x2="290" y2="150" stroke="#1E2530" stroke-width="0.6"/>
+                <rect x="12" y="12" width="64" height="24" rx="3" fill="#1A2A4A" opacity="0.9"/>
+                <rect x="12" y="44" width="64" height="24" rx="3" fill="#4A1A1A" opacity="0.9"/>
+                <rect x="152" y="12" width="64" height="24" rx="3" fill="#1A3A2A" opacity="0.9"/>
+                <rect x="222" y="44" width="64" height="24" rx="3" fill="#2A1A4A" opacity="0.9"/>
+                <rect x="12" y="84" width="64" height="24" rx="3" fill="#1A2A4A" opacity="0.9"/>
+                <rect x="152" y="84" width="64" height="24" rx="3" fill="#4A2A1A" opacity="0.9"/>
+                <rect x="82" y="12" width="64" height="24" rx="3" fill="rgba(0,230,118,0.12)" stroke="#00E676" stroke-width="1.5">
+                  <animate attributeName="opacity" values="0.8;1;0.8" dur="2s" repeatCount="indefinite"/>
+                </rect>
+                <rect x="222" y="12" width="64" height="24" rx="3" fill="rgba(0,230,118,0.12)" stroke="#00E676" stroke-width="1.5">
+                  <animate attributeName="opacity" values="1;0.8;1" dur="2.4s" repeatCount="indefinite"/>
+                </rect>
+                <rect x="82" y="84" width="64" height="24" rx="3" fill="rgba(0,230,118,0.12)" stroke="#00E676" stroke-width="1.5">
+                  <animate attributeName="opacity" values="0.9;1;0.9" dur="1.8s" repeatCount="indefinite"/>
+                </rect>
+                <defs><linearGradient id="og" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#080A0F" stop-opacity="0.6"/><stop offset="30%" stop-color="#080A0F" stop-opacity="0"/></linearGradient></defs>
+                <rect width="320" height="160" fill="url(#og)"/>
+                <text x="160" y="152" font-size="7" fill="rgba(0,230,118,0.4)" text-anchor="middle" font-family="monospace">SATELLITE · AI DETECTION · REAL-TIME</text>
+              </svg>
+            </div>
+            <div class="ob-dots">
+              <div class="ob-dot on"></div>
+              <div class="ob-dot"></div>
+              <div class="ob-dot"></div>
+            </div>
+            <div class="ob-headline">See every open spot <span>before you arrive.</span></div>
+            <div class="ob-body-text">Satellite imagery + AI tells you exactly which row has spots — no circling, no guessing.</div>
+            <div class="ob-feats">
+              <div class="ob-feat"><div class="ob-feat-icon">🛰️</div><div class="ob-feat-label">Satellite imagery</div></div>
+              <div class="ob-feat"><div class="ob-feat-icon">🤖</div><div class="ob-feat-label">AI detection</div></div>
+              <div class="ob-feat"><div class="ob-feat-icon">⚡</div><div class="ob-feat-label">Live updates</div></div>
+            </div>
+            <div class="ob-cta">Next →</div>
+            <div class="ob-skip">Skip intro</div>
+          </div>
+        </div>
+      </div>
+      <div class="screen-label">02 · Onboarding</div>
+    </div>
+
+    <!-- ══ HOME ══ -->
+    <div class="col">
+      <div class="phone">
+        <div class="screen home-screen">
+          <div class="sb"><span>9:41</span><span class="sb-r">●●●● 87%</span></div>
+          <div class="home-scroll">
+            <div class="home-pad">
+              <div class="greeting-small"><span class="blink-dot"></span>LOGGING PASSIVELY</div>
+              <div class="home-title">Good morning.</div>
+              <div class="btb">
+                <div class="btb-icon">⏰</div>
+                <div>
+                  <div class="btb-t">Best time for Hartford parking</div>
+                  <div class="btb-s">Arrive before 11:30 AM — lots fill at lunch</div>
+                </div>
+              </div>
+              <div class="sec-label">Your frequent lots</div>
+              <div class="freq-row">
+                <div class="freq-card oc">
+                  <div class="freq-icon">🏛️</div>
+                  <div class="freq-name">Civic Center Lot B</div>
+                  <div class="freq-meta">0.3 mi · Free 2hr</div>
+                  <div class="freq-n" style="color:var(--green)">24</div>
+                  <div class="freq-l">spots open</div>
+                  <div class="freq-upd">🛰 4 min ago</div>
+                </div>
+                <div class="freq-card oc">
+                  <div class="freq-icon">🛒</div>
+                  <div class="freq-name">Costco Warehouse</div>
+                  <div class="freq-meta">1.2 mi · Free</div>
+                  <div class="freq-n" style="color:var(--green)">61</div>
+                  <div class="freq-l">spots open</div>
+                  <div class="freq-upd">🛰 12 min ago</div>
+                </div>
+              </div>
+              <div class="sec-label">Nearby right now</div>
+              <div class="nl-item pick">
+                <div class="nl-ava" style="background:var(--green-dim)"><div class="nl-n" style="color:var(--green)">24</div><div class="nl-l">open</div></div>
+                <div style="flex:1"><div class="nl-nm">Civic Center Lot B</div><div class="nl-mt">0.3 mi · Free 2hr · High confidence</div></div>
+                <div class="nl-arr">›</div>
+              </div>
+              <div class="nl-item">
+                <div class="nl-ava" style="background:var(--amber-dim)"><div class="nl-n" style="color:var(--amber)">7</div><div class="nl-l">open</div></div>
+                <div style="flex:1"><div class="nl-nm">Market St Garage</div><div class="nl-mt">0.5 mi · $2/hr · Filling fast</div></div>
+                <div class="nl-arr">›</div>
+              </div>
+              <div class="nl-item">
+                <div class="nl-ava" style="background:var(--green-dim)"><div class="nl-n" style="color:var(--green)">31</div><div class="nl-l">open</div></div>
+                <div style="flex:1"><div class="nl-nm">Plaza Underground</div><div class="nl-mt">0.7 mi · $1.50/hr</div></div>
+                <div class="nl-arr">›</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="screen-label">03 · Home</div>
+    </div>
+
+    <!-- ══ LOT DETAIL ══ -->
+    <div class="col">
+      <div class="phone">
+        <div class="screen detail-screen">
+          <div class="sat-hero">
+            <svg viewBox="0 0 320 210" preserveAspectRatio="xMidYMid slice">
+              <rect width="320" height="210" fill="#141A24"/>
+              <line x1="20" y1="42" x2="300" y2="42" stroke="#1E2530" stroke-width="1"/>
+              <line x1="20" y1="84" x2="300" y2="84" stroke="#1E2530" stroke-width="1"/>
+              <line x1="20" y1="126" x2="300" y2="126" stroke="#1E2530" stroke-width="1"/>
+              <line x1="20" y1="168" x2="300" y2="168" stroke="#1E2530" stroke-width="1"/>
+              <line x1="60" y1="0" x2="60" y2="210" stroke="#1E2530" stroke-width="0.7"/>
+              <line x1="100" y1="0" x2="100" y2="210" stroke="#1E2530" stroke-width="0.7"/>
+              <line x1="140" y1="0" x2="140" y2="210" stroke="#1E2530" stroke-width="0.7"/>
+              <line x1="180" y1="0" x2="180" y2="210" stroke="#1E2530" stroke-width="0.7"/>
+              <line x1="220" y1="0" x2="220" y2="210" stroke="#1E2530" stroke-width="0.7"/>
+              <line x1="260" y1="0" x2="260" y2="210" stroke="#1E2530" stroke-width="0.7"/>
+              <rect x="22" y="4" width="35" height="34" rx="3" fill="#1A2A4A" opacity="0.9"/>
+              <rect x="22" y="46" width="35" height="34" rx="3" fill="#4A1A1A" opacity="0.9"/>
+              <rect x="102" y="4" width="35" height="34" rx="3" fill="#2A1A4A" opacity="0.9"/>
+              <rect x="142" y="46" width="35" height="34" rx="3" fill="#1A2A4A" opacity="0.9"/>
+              <rect x="182" y="88" width="35" height="34" rx="3" fill="#3A2A1A" opacity="0.9"/>
+              <rect x="222" y="4" width="35" height="34" rx="3" fill="#1A3A2A" opacity="0.9"/>
+              <rect x="22" y="88" width="35" height="34" rx="3" fill="#2A3A1A" opacity="0.9"/>
+              <rect x="102" y="130" width="35" height="34" rx="3" fill="#4A1A1A" opacity="0.9"/>
+              <rect x="182" y="4" width="35" height="34" rx="3" fill="#1A2A4A" opacity="0.9"/>
+              <rect x="262" y="46" width="35" height="34" rx="3" fill="#3A1A2A" opacity="0.9"/>
+              <rect x="62" y="4" width="35" height="34" rx="3" fill="rgba(0,230,118,0.14)" stroke="#00E676" stroke-width="1.5"/>
+              <rect x="142" y="4" width="35" height="34" rx="3" fill="rgba(0,230,118,0.14)" stroke="#00E676" stroke-width="1.5"/>
+              <rect x="102" y="46" width="35" height="34" rx="3" fill="rgba(0,230,118,0.14)" stroke="#00E676" stroke-width="1.5"/>
+              <rect x="62" y="130" width="35" height="34" rx="3" fill="rgba(0,230,118,0.14)" stroke="#00E676" stroke-width="1.5"/>
+              <rect x="222" y="130" width="35" height="34" rx="3" fill="rgba(0,230,118,0.14)" stroke="#00E676" stroke-width="1.5"/>
+              <text x="8" y="24" font-size="8" fill="rgba(255,255,255,0.15)" font-weight="700" font-family="monospace">A</text>
+              <text x="8" y="66" font-size="8" fill="rgba(255,255,255,0.15)" font-weight="700" font-family="monospace">B</text>
+              <text x="8" y="108" font-size="8" fill="rgba(255,255,255,0.15)" font-weight="700" font-family="monospace">C</text>
+              <text x="8" y="150" font-size="8" fill="rgba(255,255,255,0.15)" font-weight="700" font-family="monospace">D</text>
+              <defs>
+                <linearGradient id="dgt" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#080A0F" stop-opacity="0.65"/><stop offset="28%" stop-color="#080A0F" stop-opacity="0"/></linearGradient>
+                <linearGradient id="dgb" x1="0" y1="0" x2="0" y2="1"><stop offset="60%" stop-color="#0F1218" stop-opacity="0"/><stop offset="100%" stop-color="#0F1218" stop-opacity="1"/></linearGradient>
+              </defs>
+              <rect width="320" height="210" fill="url(#dgt)"/>
+              <rect width="320" height="210" fill="url(#dgb)"/>
+            </svg>
+            <button class="hero-back">←</button>
+            <div class="live-badge"><div class="blink-dot"></div>Live · 3 min ago</div>
+            <div class="view-toggle">
+              <div class="vt-btn on">AI Map</div>
+              <div class="vt-btn"><div class="vt-dot"></div>Live Sat</div>
+            </div>
+          </div>
+          <div class="detail-scroll">
+            <div class="detail-pad">
+              <div class="detail-title-row">
+                <div class="detail-name">Civic Center Lot B</div>
+              </div>
+              <div class="detail-sub">421 Market St · 0.3 mi · Free 2hr · 40% full</div>
+              <div class="det-btb">
+                <div class="det-btb-icon">⏰</div>
+                <div>
+                  <div class="det-btb-t">Arrive before 11:30 AM</div>
+                  <div class="det-btb-s">Lots fill at lunch — ~90 min window</div>
+                </div>
+              </div>
+              <div class="rows">
+                <div class="rc sel">
+                  <div class="rc-ava" style="background:var(--green-dim)"><div class="rc-n" style="color:var(--green)">8</div><div class="rc-l">open</div></div>
+                  <div style="flex:1"><div class="rc-nm">Row A — Northwest</div><div class="rc-mt">Closest · 37.7751° N</div></div>
+                  <div class="conf hi">High</div>
+                  <div class="best-tag">Best</div>
+                  <div class="mapbtn">↗</div>
+                </div>
+                <div class="rc">
+                  <div class="rc-ava" style="background:var(--green-dim)"><div class="rc-n" style="color:var(--green)">6</div><div class="rc-l">open</div></div>
+                  <div style="flex:1"><div class="rc-nm">Row B — North</div><div class="rc-mt">2nd row · 37.7749° N</div></div>
+                  <div class="conf hi">High</div>
+                  <div class="mapbtn">↗</div>
+                </div>
+                <div class="rc">
+                  <div class="rc-ava" style="background:var(--amber-dim)"><div class="rc-n" style="color:var(--amber)">3</div><div class="rc-l">open</div></div>
+                  <div style="flex:1"><div class="rc-nm">Row C — Center</div><div class="rc-mt" style="color:var(--amber)">Filling fast</div></div>
+                  <div class="conf md">Med</div>
+                  <div class="mapbtn">↗</div>
+                </div>
+              </div>
+              <div style="margin-bottom:10px">
+                <div class="sec-label" style="margin-bottom:7px">Occupancy forecast</div>
+                <div class="fc-bars">
+                  <div class="fcc"><div class="fct"><div class="fcb" style="height:26%;background:var(--green)"></div></div><div class="fcl">10A</div></div>
+                  <div class="fcc"><div class="fct"><div class="fcb" style="height:40%;background:var(--green)"></div></div><div class="fcl">11A</div></div>
+                  <div class="fcc"><div class="fct"><div class="fcb" style="height:40%;background:var(--green);outline:1.5px solid var(--ink);outline-offset:2px;border-radius:4px"></div></div><div class="fcl now">NOW</div></div>
+                  <div class="fcc"><div class="fct"><div class="fcb" style="height:68%;background:var(--amber)"></div></div><div class="fcl">1P</div></div>
+                  <div class="fcc"><div class="fct"><div class="fcb" style="height:92%;background:var(--red)"></div></div><div class="fcl">2P</div></div>
+                  <div class="fcc"><div class="fct"><div class="fcb" style="height:84%;background:var(--red)"></div></div><div class="fcl">3P</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="det-footer">
+            <div class="take-btn">
+              Take Me to Row A
+              <div class="take-btn-sub">Opens Maps → 37.7751°N, 122.4196°W</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="screen-label">04 · Lot Detail</div>
+    </div>
+
+    <!-- ══ DRIVING ══ -->
+    <div class="col">
+      <div class="phone">
+        <div class="screen drive-screen">
+          <div class="drive-map">
+            <svg viewBox="0 0 320 380" preserveAspectRatio="xMidYMid slice">
+              <rect width="320" height="380" fill="#0D1018"/>
+              <rect x="0" y="140" width="320" height="18" fill="#141A22"/>
+              <rect x="140" y="0" width="18" height="380" fill="#141A22"/>
+              <rect x="4" y="4" width="132" height="132" rx="3" fill="#0F131A"/>
+              <rect x="162" y="4" width="154" height="132" rx="3" fill="#0F131A"/>
+              <rect x="4" y="162" width="132" height="214" rx="3" fill="#0F131A"/>
+              <rect x="162" y="162" width="154" height="100" rx="3" fill="#141C26" stroke="rgba(0,230,118,0.3)" stroke-width="1.5"/>
+              <rect x="164" y="164" width="150" height="30" rx="2" fill="rgba(0,230,118,0.12)" stroke="rgba(0,230,118,0.4)" stroke-width="1"/>
+              <text x="239" y="183" font-size="8" fill="rgba(0,230,118,0.8)" text-anchor="middle" font-weight="700" font-family="monospace">ROW A — 8 OPEN</text>
+              <polyline points="68,320 68,270 151,270 151,174 162,174" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-dasharray="6,4" fill="none" stroke-linecap="round"/>
+              <polyline points="68,320 68,270 151,270 151,174 162,174" stroke="#2979FF" stroke-width="1.5" stroke-dasharray="6,4" fill="none" stroke-linecap="round" opacity="0.5"/>
+              <line x1="0" y1="149" x2="320" y2="149" stroke="rgba(255,255,255,0.05)" stroke-width="1.5" stroke-dasharray="12,10"/>
+              <line x1="149" y1="0" x2="149" y2="380" stroke="rgba(255,255,255,0.05)" stroke-width="1.5" stroke-dasharray="12,10"/>
+              <circle cx="62" cy="64" r="8" fill="#1E3018" opacity="0.5"/>
+            </svg>
+            <div class="car-pin">🚗</div>
+            <div class="dest-pin"><div class="dp-body"><div class="dp-i">A</div></div></div>
+            <div class="eta-float">
+              <div><div class="eta-n">3<span class="eta-u">min</span></div></div>
+              <div style="flex:1"><div class="eta-dest">Row A — Civic Center Lot B</div><div class="eta-coord">37.7751° N · 122.4196° W</div></div>
+              <div class="eta-spots"><div class="eta-sn">8</div><div class="eta-sl">open</div></div>
+            </div>
+            <div class="mon-strip">
+              <div class="blink-dot"></div>
+              <div style="flex:1"><div class="ms-m">Monitoring Row A live</div><div class="ms-s">Alert fires if spots fill en route</div></div>
+              <div class="ms-c">8 open</div>
+            </div>
+          </div>
+          <div class="step-card">
+            <div class="sc-h"></div>
+            <div class="sc-row">
+              <div class="sc-ic">↗</div>
+              <div><div class="sc-m">Turn right onto Market St</div><div class="sc-s">Row A entrance on left — 8 spots</div></div>
+            </div>
+            <div class="sim-btn">⚠️ Simulate: Row A fills up</div>
+            <div class="cancel-btn">Cancel Navigation</div>
+          </div>
+        </div>
+      </div>
+      <div class="screen-label">05 · Driving</div>
+    </div>
+
+    <!-- ══ REROUTE ══ -->
+    <div class="col">
+      <div class="phone">
+        <div class="screen reroute-screen">
+          <div class="sb"><span>9:44</span><span class="sb-r">●●●● 87%</span></div>
+          <div class="alert-top">
+            <div class="alert-icon">⚠️</div>
+            <div class="alert-title">Row A just filled up</div>
+            <div class="alert-copy">We caught it while you were driving.<br>Row B has <b>6 open spots</b> — one row back.</div>
+            <div class="cmp">
+              <div class="cr was">
+                <div style="font-size:16px;flex-shrink:0">🚫</div>
+                <div style="flex:1"><div class="cr-lbl">Was heading to</div><div class="cr-v st">Row A — Northwest</div></div>
+                <div class="cbdg fu">Full</div>
+              </div>
+              <div class="cr">
+                <div style="font-size:16px;flex-shrink:0">✅</div>
+                <div style="flex:1"><div class="cr-lbl">New destination</div><div class="cr-v">Row B — North entrance</div></div>
+                <div class="cbdg op">6 open</div>
+              </div>
+            </div>
+          </div>
+          <div class="alert-btns">
+            <div class="rrb">
+              <span>Reroute to Row B</span>
+              <span class="rrs">Opens Maps → 37.7749°N, 122.4194°W</span>
+            </div>
+            <div class="cc-btn">Keep current route</div>
+          </div>
+        </div>
+      </div>
+      <div class="screen-label">06 · Reroute Alert</div>
+    </div>
+
+    <!-- ══ PARKED ══ -->
+    <div class="col">
+      <div class="phone">
+        <div class="screen parked-screen">
+          <div class="sb"><span>9:47</span><span class="sb-r">●●●● 87%</span></div>
+          <div class="pk-wrap">
+            <div class="pk-ring">✓</div>
+            <div class="pk-title">You're parked.</div>
+            <div class="pk-sub">Civic Center Lot B · Row A, spot A·02<br>Visit logged — predictions just improved.</div>
+            <div class="pk-stats">
+              <div class="ps"><div class="ps-n">6<span style="font-size:12px;font-weight:500;color:var(--ink3)">m</span></div><div class="ps-l">Time saved</div></div>
+              <div class="ps"><div class="ps-n" style="color:var(--green)">A·02</div><div class="ps-l">Your spot</div></div>
+              <div class="ps"><div class="ps-n">Free</div><div class="ps-l">Cost</div></div>
+            </div>
+            <div class="pk-acts">
+              <div class="rem-btn">⏰ Set parking reminder</div>
+              <div class="done-btn">Back to Home</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="screen-label">07 · Parked</div>
+    </div>
+
+  </div><!-- /screens -->
+
+  <!-- DESIGN TOKENS -->
+  <div class="tokens-section">
+    <div class="tokens-title">// Design Tokens — Exact Values for Implementation</div>
+    <div class="tokens-grid">
+      <div class="token-group">
+        <div class="token-group-label">Backgrounds</div>
+        <div class="token-item"><div class="token-swatch" style="background:#080A0F"></div><div><div class="token-name">bg</div><div class="token-val">#080A0F</div></div></div>
+        <div class="token-item"><div class="token-swatch" style="background:#0F1218"></div><div><div class="token-name">surface</div><div class="token-val">#0F1218</div></div></div>
+        <div class="token-item"><div class="token-swatch" style="background:#161B24"></div><div><div class="token-name">surface2</div><div class="token-val">#161B24</div></div></div>
+        <div class="token-item"><div class="token-swatch" style="background:#1E2530"></div><div><div class="token-name">surface3</div><div class="token-val">#1E2530</div></div></div>
+      </div>
+      <div class="token-group">
+        <div class="token-group-label">Accent Colors</div>
+        <div class="token-item"><div class="token-swatch" style="background:#00E676"></div><div><div class="token-name">green (open)</div><div class="token-val">#00E676</div></div></div>
+        <div class="token-item"><div class="token-swatch" style="background:#FFB300"></div><div><div class="token-name">amber (filling)</div><div class="token-val">#FFB300</div></div></div>
+        <div class="token-item"><div class="token-swatch" style="background:#FF3D57"></div><div><div class="token-name">red (full)</div><div class="token-val">#FF3D57</div></div></div>
+        <div class="token-item"><div class="token-swatch" style="background:#2979FF"></div><div><div class="token-name">blue (route)</div><div class="token-val">#2979FF</div></div></div>
+      </div>
+      <div class="token-group">
+        <div class="token-group-label">Text</div>
+        <div class="token-item"><div class="token-swatch" style="background:#F2F0EC;border:1px solid #333"></div><div><div class="token-name">ink (primary)</div><div class="token-val">#F2F0EC</div></div></div>
+        <div class="token-item"><div class="token-swatch" style="background:#A8A8B8;border:1px solid #333"></div><div><div class="token-name">ink2 (secondary)</div><div class="token-val">#A8A8B8</div></div></div>
+        <div class="token-item"><div class="token-swatch" style="background:#505060;border:1px solid #333"></div><div><div class="token-name">ink3 (muted)</div><div class="token-val">#505060</div></div></div>
+      </div>
+      <div class="token-group">
+        <div class="token-group-label">Typography</div>
+        <div class="token-item"><div><div class="token-name">Display / Heading</div><div class="token-val">Syne — 800/900 weight</div></div></div>
+        <div class="token-item"><div><div class="token-name">Body</div><div class="token-val">Syne — 500/600 weight</div></div></div>
+        <div class="token-item"><div><div class="token-name">Mono / Labels</div><div class="token-val">Syne Mono — 400/500</div></div></div>
+        <div class="token-item"><div><div class="token-name">Letter spacing</div><div class="token-val">Headings: -0.02em</div></div></div>
+      </div>
+      <div class="token-group">
+        <div class="token-group-label">Borders & Radius</div>
+        <div class="token-item"><div><div class="token-name">border</div><div class="token-val">rgba(255,255,255,0.06)</div></div></div>
+        <div class="token-item"><div><div class="token-name">border2</div><div class="token-val">rgba(255,255,255,0.10)</div></div></div>
+        <div class="token-item"><div><div class="token-name">Card radius</div><div class="token-val">14–16px</div></div></div>
+        <div class="token-item"><div><div class="token-name">Button radius</div><div class="token-val">16px</div></div></div>
+      </div>
+      <div class="token-group">
+        <div class="token-group-label">Green Variants</div>
+        <div class="token-item"><div class="token-swatch" style="background:rgba(0,230,118,0.10)"></div><div><div class="token-name">green-dim (bg)</div><div class="token-val">rgba(0,230,118,0.10)</div></div></div>
+        <div class="token-item"><div class="token-swatch" style="background:rgba(0,230,118,0.20)"></div><div><div class="token-name">green-glow (border)</div><div class="token-val">rgba(0,230,118,0.20)</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SPEC NOTES -->
+  <div class="spec-section">
+    <div class="tokens-title">// Implementation Notes for Claude Code</div>
+    <div class="spec-grid">
+      <div class="spec-item">
+        <div class="spec-label">Fonts</div>
+        <div class="spec-value">Import from Google Fonts: <code>Syne</code> (400–800) and <code>Syne Mono</code>. Use Syne for all UI text. Syne Mono for labels, timestamps, coordinates, monospace data.</div>
+      </div>
+      <div class="spec-item">
+        <div class="spec-label">CTA Buttons</div>
+        <div class="spec-value">Primary: <code>background #00E676</code>, <code>color #000</code>, <code>borderRadius 16</code>, <code>fontWeight 800</code>. Secondary: <code>background #1E2530</code>, <code>color #A8A8B8</code>. Never use purple or blue as primary action color.</div>
+      </div>
+      <div class="spec-item">
+        <div class="spec-label">Cards</div>
+        <div class="spec-value">All cards: <code>background #0F1218</code>, <code>borderRadius 14</code>, <code>border: 1px solid rgba(255,255,255,0.06)</code>. Open lots get green border tint: <code>rgba(0,230,118,0.18)</code>.</div>
+      </div>
+      <div class="spec-item">
+        <div class="spec-label">Availability Colors</div>
+        <div class="spec-value">Open spots: <code>#00E676</code> text on <code>rgba(0,230,118,0.10)</code> bg. Filling: <code>#FFB300</code> on <code>rgba(255,179,0,0.10)</code>. Full: <code>#FF3D57</code> on <code>rgba(255,61,87,0.08)</code>.</div>
+      </div>
+      <div class="spec-item">
+        <div class="spec-label">Passive GPS Indicator</div>
+        <div class="spec-value">Small blinking green dot + "LOGGING PASSIVELY" in Syne Mono caps, ink3 color. Shows at top of home screen. Communicates silent data collection is active.</div>
+      </div>
+      <div class="spec-item">
+        <div class="spec-label">Satellite Toggle</div>
+        <div class="spec-value">Frosted pill at bottom of hero image. Dark semi-transparent background. "AI Map" and "Live Sat" options. Active tab gets <code>background #0F1218</code>. Inactive is transparent with muted text. Live dot animates on "Live Sat".</div>
+      </div>
+      <div class="spec-item">
+        <div class="spec-label">Row Cards</div>
+        <div class="spec-value">Selected row: <code>borderColor #00E676</code> + subtle green bg tint. Unselected: transparent border. Each row shows: availability badge, row name, confidence level (High/Med/Est), Best tag if applicable, Maps deep link arrow.</div>
+      </div>
+      <div class="spec-item">
+        <div class="spec-label">Maps Deep Link</div>
+        <div class="spec-value">iOS: <code>maps://maps.apple.com/?daddr={lat},{lng}&dirflg=d</code>. Android: <code>https://maps.google.com/?q={lat},{lng}&mode=driving</code>. Routes to exact row entrance coordinate, not lot address.</div>
+      </div>
+      <div class="spec-item">
+        <div class="spec-label">Driving Screen</div>
+        <div class="spec-value">Map background with semi-transparent ETA card floating at top. Live monitoring strip at bottom above step card. Blinking green dot in monitoring strip. Car emoji animated along route path.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

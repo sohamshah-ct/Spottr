@@ -1,0 +1,15 @@
+requests==2.31.0
+psycopg2-binary==2.9.9
+python-dotenv==1.0.0
+shapely==2.0.3
+tqdm==4.66.1
+
+# Pipeline 03
+ultralytics==8.0.227
+opencv-python==4.9.0.80
+Pillow==10.2.0
+
+# Pipeline 05
+prophet==1.1.5
+pandas==2.1.4
+sqlalchemy==2.0.25
