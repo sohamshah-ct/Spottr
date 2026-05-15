@@ -1,6 +1,6 @@
 /**
  * SPOTTR Search API
- * GET /search?q=&lat=&lng=          — Google Places Autocomplete
+ * GET /search?q=&lat=&lng=          - Google Places Autocomplete
  */
 const express = require('express');
 const router = express.Router();

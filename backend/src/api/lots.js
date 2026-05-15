@@ -20,7 +20,7 @@ function haversineMeters(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
-// GET /api/lots/near — BEFORE /:id to avoid "near" being parsed as a UUID
+// GET /api/lots/near - BEFORE /:id to avoid "near" being parsed as a UUID
 router.get('/near', async (req, res) => {
   const lat = parseFloat(req.query.lat);
   const lng = parseFloat(req.query.lng);
@@ -46,7 +46,7 @@ router.get('/near', async (req, res) => {
       return res.json({ lots: dbResult.rows, source: 'proprietary_db', count: dbResult.rows.length });
     }
 
-    console.log(`No proprietary lots within 200m of ${lat},${lng} — querying OSM`);
+    console.log(`No proprietary lots within 200m of ${lat},${lng} - querying OSM`);
     const osmLots = await fetchOsmParkingNear(lat, lng, 200);
     if (osmLots.length === 0) return res.json({ lots: [], source: 'osm_fallback', count: 0 });
 
@@ -71,7 +71,7 @@ router.get('/near', async (req, res) => {
         distance_meters: haversineMeters(lat, lng, l.lat, l.lng),
       })),
       source: 'osm_fallback', count: insertedIds.length,
-      message: 'Lots found via OSM — spot detection queued',
+      message: 'Lots found via OSM - spot detection queued',
     });
   } catch (err) {
     console.error('GET /lots/near error:', err.message);
@@ -121,7 +121,7 @@ router.get('/frequent', async (req, res) => {
   }
 });
 
-// GET /api/lots/:id — parameterized routes AFTER all named routes
+// GET /api/lots/:id - parameterized routes AFTER all named routes
 router.get('/:id', async (req, res) => {
   try {
     const lot = await db.getLotById(req.params.id);

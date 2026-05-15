@@ -1,5 +1,5 @@
 /**
- * SPOTTR — Core database queries
+ * SPOTTR - Core database queries
  */
 const pool = require('./pool');
 

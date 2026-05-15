@@ -13,7 +13,7 @@ async function notifyRowFilled({ pushToken, filledRowLabel, alternativeRow, lotI
   return sendPushNotification({
     pushToken,
     title: `Row ${filledRowLabel} just filled`,
-    body: alternativeRow ? `Row ${alternativeRow.label} has ${alternativeRow.open} spots — tap to reroute` : 'All rows are filling up — check alternatives nearby',
+    body: alternativeRow ? `Row ${alternativeRow.label} has ${alternativeRow.open} spots - tap to reroute` : 'All rows are filling up - check alternatives nearby',
     data: { screen: 'reroute', lotId, newRowId: alternativeRow?.id, newRowLabel: alternativeRow?.label },
   });
 }
