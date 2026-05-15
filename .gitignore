@@ -1,15 +1,41 @@
+
 # Dependencies
 node_modules/
-.expo/
 
 # Env files
 .env
+.env.local
+.env.*.local
 *.local
 
 # Build outputs
 dist/
 build/
+
+# Expo
+.expo/
 .expo-shared/
+mobile/.expo/
+
+# Python
+pipeline/__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Data files
+*.csv
+*.dump
+*.sql.gz
+
+# S3 / AWS credential caches
+.aws/
+aws-credentials-cache*
+s3-cache/
 
 # OS
 .DS_Store
@@ -17,3 +43,7 @@ Thumbs.db
 
 # Railway
 .railway/
+
+# Claude Code local session data (contains tool call history with env vars)
+.claude/settings.local.json
+.claude/projects/
