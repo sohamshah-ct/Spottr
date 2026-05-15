@@ -4,6 +4,9 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 
+const cron = require('node-cron');
+const { runBackup } = require('../scripts/backup_db');
+
 const lotsRouter = require('./api/lots');
 const eventsRouter = require('./api/events');
 const devicesRouter = require('./api/devices');
@@ -54,5 +57,11 @@ app.listen(PORT, () => {
   console.log(`SPOTTR API running on port ${PORT}`);
   console.log(`Health: http://localhost:${PORT}/health`);
 });
+
+// Daily DB backup at 03:00 UTC
+cron.schedule('0 3 * * *', () => {
+  console.log(`[${new Date().toISOString()}] Running scheduled DB backup...`);
+  runBackup().catch(err => console.error('Scheduled backup failed:', err.message));
+}, { timezone: 'UTC' });
 
 module.exports = app;

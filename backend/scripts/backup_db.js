@@ -85,15 +85,15 @@ async function pruneOldBackups() {
   console.log(`Pruned ${toDelete.length} backup(s) older than ${RETENTION_DAYS} days.`);
 }
 
-async function main() {
-  try {
-    const { s3Key, size } = await dumpToS3();
-    await pruneOldBackups();
-    console.log(`[${new Date().toISOString()}] Backup finished: s3://${BUCKET}/${s3Key} (${(size/1024/1024).toFixed(2)} MB)`);
-  } catch (err) {
-    console.error('Backup failed:', err.message);
-    process.exit(1);
-  }
+async function runBackup() {
+  const { s3Key, size } = await dumpToS3();
+  await pruneOldBackups();
+  console.log(`[${new Date().toISOString()}] Backup finished: s3://${BUCKET}/${s3Key} (${(size/1024/1024).toFixed(2)} MB)`);
 }
 
-main();
+// Run directly: node scripts/backup_db.js
+if (require.main === module) {
+  runBackup().catch(err => { console.error('Backup failed:', err.message); process.exit(1); });
+}
+
+module.exports = { runBackup };
