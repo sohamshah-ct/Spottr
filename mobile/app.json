@@ -9,18 +9,22 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0A0A0A"
+      "backgroundColor": "#080A0F"
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.spottr.app"
+      "bundleIdentifier": "com.spottr.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Spottr uses your location to show nearby parking lots."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0A0A0A"
+        "backgroundColor": "#080A0F"
       },
-      "package": "com.spottr.app"
+      "package": "com.spottr.app",
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -29,6 +33,21 @@
       "eas": {
         "projectId": "spottr"
       }
-    }
+    },
+    "plugins": [
+      "expo-font",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Spottr uses your location to show nearby parking lots."
+        }
+      ],
+      [
+        "react-native-maps",
+        {
+          "googleMapsApiKey": "REDACTED_GOOGLE_KEY_2"
+        }
+      ]
+    ]
   }
 }

@@ -71,9 +71,21 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json();
 }
 
+export interface PlaceResult {
+  place_id: string;
+  description: string;
+  mainText: string;
+  secondaryText: string;
+  lat: number | null;
+  lng: number | null;
+}
+
 export const api = {
-  getLotsNear: (lat: number, lng: number) =>
-    apiFetch<LotsNearResponse>(`/api/lots/near?lat=${lat}&lng=${lng}`),
+  getLotsNear: (lat: number, lng: number, radius?: number) => {
+    const params = new URLSearchParams({ lat: String(lat), lng: String(lng) });
+    if (radius != null) params.set('radius', String(radius));
+    return apiFetch<LotsNearResponse>(`/api/lots/near?${params}`);
+  },
 
   getLotRows: (lotId: string) =>
     apiFetch<RowsResponse>(`/api/lots/${lotId}/rows`),
@@ -81,6 +93,14 @@ export const api = {
   getLot: (lotId: string) =>
     apiFetch<Lot>(`/api/lots/${lotId}`),
 
+  searchPlaces: (q: string, lat?: number, lng?: number) => {
+    const params = new URLSearchParams({ q });
+    if (lat != null) params.set('lat', String(lat));
+    if (lng != null) params.set('lng', String(lng));
+    return apiFetch<{ results: PlaceResult[]; count: number }>(`/api/search?${params}`);
+  },
+
+  // fallback DB-only substring search — unused by SearchSheet but kept for future secondary search
   searchLots: (q: string, lat?: number, lng?: number) => {
     const params = new URLSearchParams({ q });
     if (lat != null) params.set('lat', String(lat));
