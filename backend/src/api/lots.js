@@ -140,6 +140,254 @@ function computeZones(spaces, anchorLat, anchorLng) {
   }).filter(Boolean);
 }
 
+// ── Track 4: Building / landuse-anchored OSM coverage fallback ────────────
+
+// Per-type minimum bbox area (in deg²) below which the inferred-bbox fallback
+// fires.  Large-lot Place types (warehouse stores, hospitals) have higher bars
+// because a 6,400m² union result is clearly wrong for those contexts.
+// Kept in the same deg² unit as BBOX_FLOOR_DEG2 / bboxAreaDeg2() for consistency.
+function bboxFloorDeg2ForPlaceType(placeType) {
+  const t = (placeType || '').toLowerCase();
+  if (t.includes('university') || t.includes('college'))  return (200 / 111320) ** 2; // 40,000 m²
+  if (t.includes('hospital'))                              return (150 / 111320) ** 2; // 22,500 m²
+  if (t.includes('school'))                               return (100 / 111320) ** 2; // 10,000 m²
+  if (t.includes('warehouse_store'))                      return (150 / 111320) ** 2; // 22,500 m²
+  if (t.includes('department_store') || t.includes('shopping_mall')) return (120 / 111320) ** 2; // 14,400 m²
+  return BBOX_FLOOR_DEG2; // 6,400 m² global default
+}
+
+// Buffer added to the anchor building's bbox to produce the inferred parking bbox
+// (Strategy A, commercial types).  Parking typically surrounds the building on
+// 3 sides; 80–130m covers most big-box lot depths.
+function buildingBufferMeters(placeType) {
+  const t = (placeType || '').toLowerCase();
+  if (t.includes('warehouse_store'))                       return 130;
+  if (t.includes('department_store') || t.includes('shopping_mall')) return 100;
+  return 80; // grocery_store, supermarket, default commercial
+}
+
+// Max bbox area caps (deg²) — prevents imaging a 2km² area when OSM has an
+// oversized building or landuse polygon.
+const MAX_INFERRED_DEG2_COMMERCIAL    = (400 / 111320) ** 2; // 160,000 m²
+const MAX_INFERRED_DEG2_INSTITUTIONAL = (500 / 111320) ** 2; // 250,000 m²
+
+// Shrink bbox symmetrically toward anchorLat/Lng until area ≤ maxAreaDeg2.
+function clampBboxToArea(bbox, maxAreaDeg2, anchorLat, anchorLng) {
+  const areaH = bbox.bbox_north - bbox.bbox_south;
+  const areaW = bbox.bbox_east  - bbox.bbox_west;
+  if (areaH * areaW <= maxAreaDeg2) return bbox;
+  const scale  = Math.sqrt(maxAreaDeg2 / (areaH * areaW));
+  const newH   = areaH * scale;
+  const newW   = areaW * scale;
+  console.log(`[inferred-bbox] bbox clamped: ${(areaH*111320).toFixed(0)}x${(areaW*111320*Math.cos(anchorLat*Math.PI/180)).toFixed(0)}m → ${(newH*111320).toFixed(0)}x${(newW*111320*Math.cos(anchorLat*Math.PI/180)).toFixed(0)}m`);
+  return {
+    bbox_north: anchorLat  + newH / 2,
+    bbox_south: anchorLat  - newH / 2,
+    bbox_east:  anchorLng  + newW / 2,
+    bbox_west:  anchorLng  - newW / 2,
+  };
+}
+
+// Strategy A — building-anchored inference (commercial primary, institutional fallback).
+//
+// Selection rule:
+//   Commercial  → nearest building, name-match as priority override.
+//   Institutional → LARGEST building by footprint area.
+//   Empirical justification: at SWHS the nearest building is a 68×10m breezeway
+//   at 94m from the pin; the correct anchor (main school building) is 116×89m at
+//   240m.  Nearest-first fails for multi-building campuses.
+async function tryStrategyA(lat, lng, placeType, placeName, isInstitutional) {
+  const searchRadius = isInstitutional ? 300 : 250;
+  const query = `[out:json][timeout:15];way["building"](around:${searchRadius},${lat},${lng});out body;>;out skel qt;`;
+  try {
+    const resp = await fetch('https://overpass-api.de/api/interpreter', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'Spottr/1.0 (parking availability app; github.com/spottr)',
+      },
+      body: `data=${encodeURIComponent(query)}`,
+    });
+    const data = await resp.json();
+    const nodes = {};
+    for (const el of data.elements || []) { if (el.type === 'node') nodes[el.id] = el; }
+
+    // Exclude clearly domestic/residential building tags.
+    const EXCLUDE_BUILDING = new Set(['residential', 'house', 'apartments', 'detached', 'semi', 'terrace', 'cabin', 'bungalow']);
+    const candidates = (data.elements || [])
+      .filter(e => e.type === 'way' && !EXCLUDE_BUILDING.has(e.tags?.building))
+      .map(w => {
+        const coords = (w.nodes || []).map(id => nodes[id]).filter(Boolean);
+        if (coords.length < 3) return null;
+        const lats = coords.map(c => c.lat), lngs = coords.map(c => c.lon);
+        const N = Math.max(...lats), S = Math.min(...lats);
+        const E = Math.max(...lngs), W = Math.min(...lngs);
+        const hM = (N - S) * 111320;
+        const wM = (E - W) * 111320 * Math.cos(lat * Math.PI / 180);
+        const areaM2 = hM * wM;
+        const cLat = lats.reduce((a, b) => a + b, 0) / lats.length;
+        const cLng = lngs.reduce((a, b) => a + b, 0) / lngs.length;
+        const dist = haversineMeters(lat, lng, cLat, cLng);
+        // Name match: first token of placeName (e.g. "Costco" from "Costco Wholesale")
+        const firstToken = (placeName || '').toLowerCase().split(/\s+/)[0];
+        const nameMatch = firstToken.length > 2 && (w.tags?.name || '').toLowerCase().includes(firstToken);
+        return { w, N, S, E, W, hM, wM, areaM2, dist, nameMatch };
+      })
+      .filter(Boolean);
+
+    if (candidates.length === 0) {
+      console.log(`[inferred-bbox] strategy-A: no non-residential buildings within ${searchRadius}m`);
+      return null;
+    }
+
+    // Select anchor building per type-specific rule.
+    let anchor;
+    if (isInstitutional) {
+      // Largest footprint — correct for multi-building campuses.
+      anchor = candidates.sort((a, b) => b.areaM2 - a.areaM2)[0];
+    } else {
+      // Commercial: name-match candidates first, then nearest.
+      const nameMatches = candidates.filter(b => b.nameMatch);
+      anchor = nameMatches.length > 0
+        ? nameMatches.sort((a, b) => a.dist - b.dist)[0]
+        : candidates.sort((a, b) => a.dist - b.dist)[0];
+    }
+
+    const bufM    = buildingBufferMeters(placeType);
+    const bufLat  = bufM / 111320;
+    const bufLng  = bufM / (111320 * Math.cos(lat * Math.PI / 180));
+    let bbox = {
+      bbox_north: anchor.N + bufLat,
+      bbox_south: anchor.S - bufLat,
+      bbox_east:  anchor.E + bufLng,
+      bbox_west:  anchor.W - bufLng,
+    };
+
+    // Pin containment assertion: the inferred bbox must contain the Place pin.
+    // If the anchor building is very far from the pin, the buffer may not reach it.
+    if (lat < bbox.bbox_south || lat > bbox.bbox_north ||
+        lng < bbox.bbox_west  || lng > bbox.bbox_east) {
+      console.log(`[inferred-bbox] strategy-A: pin (${lat},${lng}) outside inferred bbox — anchor too far, skipping`);
+      return null;
+    }
+
+    const maxArea = isInstitutional ? MAX_INFERRED_DEG2_INSTITUTIONAL : MAX_INFERRED_DEG2_COMMERCIAL;
+    bbox = clampBboxToArea(bbox, maxArea, lat, lng);
+
+    console.log(`[inferred-bbox] strategy-A OK: way${anchor.w.id} "${anchor.w.tags?.name || ''}" ${anchor.hM.toFixed(0)}x${anchor.wM.toFixed(0)}m +${bufM}m → ${((bbox.bbox_north - bbox.bbox_south) * 111320).toFixed(0)}x${((bbox.bbox_east - bbox.bbox_west) * 111320 * Math.cos(lat * Math.PI / 180)).toFixed(0)}m`);
+    return { bbox, bboxSource: 'building_inferred' };
+  } catch (e) {
+    console.error('[inferred-bbox] strategy-A error:', e.message);
+    return null;
+  }
+}
+
+// Strategy B — landuse-anchored inference (institutional primary, commercial fallback).
+// Finds the relevant landuse polygon containing the Place pin and uses its bbox
+// as the candidate parking area.  Note: landuse=hospital has 0 ways in all of CT
+// (empirically verified 2026-05-17) — Strategy B will silently fail for hospital
+// types and fall through to Strategy A.
+async function tryStrategyB(lat, lng, placeType) {
+  const t = (placeType || '').toLowerCase();
+  let targetValues;
+  if (t.includes('school') || t.includes('university') || t.includes('college')) {
+    targetValues = ['education'];
+  } else if (t.includes('hospital')) {
+    targetValues = ['hospital'];
+  } else if (t.includes('store') || t.includes('mall') || t.includes('retail')) {
+    targetValues = ['retail', 'commercial'];
+  } else {
+    return null; // no landuse type mapped for this Place type
+  }
+
+  const query = `[out:json][timeout:15];way["landuse"](around:600,${lat},${lng});out body;>;out skel qt;`;
+  try {
+    const resp = await fetch('https://overpass-api.de/api/interpreter', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'Spottr/1.0 (parking availability app; github.com/spottr)',
+      },
+      body: `data=${encodeURIComponent(query)}`,
+    });
+    const data = await resp.json();
+    const nodes = {};
+    for (const el of data.elements || []) { if (el.type === 'node') nodes[el.id] = el; }
+
+    const polygons = (data.elements || [])
+      .filter(e => e.type === 'way' && targetValues.includes(e.tags?.landuse))
+      .map(w => {
+        const coords = (w.nodes || []).map(id => nodes[id]).filter(Boolean);
+        if (coords.length < 3) return null;
+        const lats = coords.map(c => c.lat), lngs = coords.map(c => c.lon);
+        const N = Math.max(...lats), S = Math.min(...lats);
+        const E = Math.max(...lngs), W = Math.min(...lngs);
+        const hM = (N - S) * 111320;
+        const wM = (E - W) * 111320 * Math.cos(lat * Math.PI / 180);
+        const areaM2 = hM * wM;
+        const pinInside = lat >= S && lat <= N && lng >= W && lng <= E;
+        const cLat = lats.reduce((a, b) => a + b, 0) / lats.length;
+        const cLng = lngs.reduce((a, b) => a + b, 0) / lngs.length;
+        return { w, N, S, E, W, hM, wM, areaM2, pinInside, cLat, cLng };
+      })
+      .filter(Boolean);
+
+    if (polygons.length === 0) {
+      console.log(`[inferred-bbox] strategy-B: no landuse=${targetValues.join('/')} within 600m`);
+      return null;
+    }
+
+    // Prefer smallest containing polygon (most specific scope).
+    // Fall back to nearest by centroid when no polygon contains the pin.
+    const containing = polygons.filter(p => p.pinInside).sort((a, b) => a.areaM2 - b.areaM2);
+    const candidate  = containing.length > 0
+      ? containing[0]
+      : polygons.sort((a, b) => haversineMeters(lat, lng, a.cLat, a.cLng) - haversineMeters(lat, lng, b.cLat, b.cLng))[0];
+
+    const margin    = 20 / 111320;
+    const marginLng = 20 / (111320 * Math.cos(lat * Math.PI / 180));
+    let bbox = {
+      bbox_north: candidate.N + margin,
+      bbox_south: candidate.S - margin,
+      bbox_east:  candidate.E + marginLng,
+      bbox_west:  candidate.W - marginLng,
+    };
+
+    // Pin containment assertion.
+    if (lat < bbox.bbox_south || lat > bbox.bbox_north ||
+        lng < bbox.bbox_west  || lng > bbox.bbox_east) {
+      console.log(`[inferred-bbox] strategy-B: pin outside landuse polygon bbox — skipping`);
+      return null;
+    }
+
+    bbox = clampBboxToArea(bbox, MAX_INFERRED_DEG2_INSTITUTIONAL, lat, lng);
+
+    console.log(`[inferred-bbox] strategy-B OK: landuse=${candidate.w.tags?.landuse} way${candidate.w.id} ${candidate.hM.toFixed(0)}x${candidate.wM.toFixed(0)}m → ${((bbox.bbox_north - bbox.bbox_south) * 111320).toFixed(0)}x${((bbox.bbox_east - bbox.bbox_west) * 111320 * Math.cos(lat * Math.PI / 180)).toFixed(0)}m`);
+    return { bbox, bboxSource: 'landuse_inferred' };
+  } catch (e) {
+    console.error('[inferred-bbox] strategy-B error:', e.message);
+    return null;
+  }
+}
+
+// Top-level fallback dispatcher.
+// Commercial types: Strategy A → B.  Institutional types: B → A.
+async function fetchInferredBbox(lat, lng, placeType, placeName) {
+  const isInstitutional = placeType
+    ? [...INSTITUTIONAL_TYPES].some(t => placeType.toLowerCase().includes(t))
+    : false;
+  const strategies = isInstitutional ? ['B', 'A'] : ['A', 'B'];
+  for (const s of strategies) {
+    const result = s === 'A'
+      ? await tryStrategyA(lat, lng, placeType, placeName, isInstitutional)
+      : await tryStrategyB(lat, lng, placeType);
+    if (result) return result;
+    console.log(`[inferred-bbox] strategy-${s} failed — trying next`);
+  }
+  console.log(`[inferred-bbox] both strategies failed for placeType=${placeType}`);
+  return null;
+}
+
 // Three-step upsert for a Place-pin search:
 //   1. Look up by google_place_id (re-search of a known place)
 //   2. Look up by proximity within 150m (promotes pre-Track-3 rows, e.g. SWHS)
@@ -194,29 +442,55 @@ async function upsertUnionLot({ lat, lng, placeName, googlePlaceId, placeType })
   }
 
   // ── Bbox-area regression guard ─────────────────────────────────────────────
-  // If the new union bbox area is < 50% of the existing lot's bbox area, or below
-  // the absolute 80m×80m floor, fall back to keeping existing geometry.  This
-  // prevents a bad OSM result (small auxiliary lot) from overwriting a healthy bbox.
-  // For brand-new lots with no existing row and a tiny bbox, log low_osm_coverage.
+  // Protect existing geometry when the new union bbox is a significant regression
+  // from a HEALTHY existing bbox (above the per-type floor).
+  // Sub-floor existing bboxes (e.g. Costco at 45×43m) are NOT protected — the
+  // Track 4 fallback path needs to be able to replace them with better coverage.
   let bboxOverridden = false;
   if (bbox && existingRow?.bbox_north != null) {
-    const newArea = bboxAreaDeg2(bbox);
-    const oldArea = bboxAreaDeg2(existingRow);
-    if (oldArea > 0 && (newArea < oldArea * 0.5 || newArea < BBOX_FLOOR_DEG2)) {
+    const newArea  = bboxAreaDeg2(bbox);
+    const oldArea  = bboxAreaDeg2(existingRow);
+    const typeFloor = bboxFloorDeg2ForPlaceType(placeType);
+    // Guard fires only when existing is healthy AND new is a meaningful regression.
+    if (oldArea >= typeFloor && newArea < oldArea * 0.5) {
       console.log(`[upsertUnionLot] bbox-regression-guard: new=${(newArea * 1e10).toFixed(1)} old=${(oldArea * 1e10).toFixed(1)} — keeping existing geometry`);
       bbox = null;
       bboxOverridden = true;
     }
-  }
-  if (bbox && !existingRow && bboxAreaDeg2(bbox) < BBOX_FLOOR_DEG2) {
-    console.log(`[upsertUnionLot] low_osm_coverage: bbox area=${(bboxAreaDeg2(bbox) * 1e10).toFixed(1)} below floor (${(BBOX_FLOOR_DEG2 * 1e10).toFixed(1)})`);
   }
 
   // Detect geometry change so we know whether to invalidate the detection cache.
   // bboxOverridden means we kept existing geometry — treat as no change so cache survives.
   const newKey = [...sourceOsmIds].sort().join(',');
   const oldKey = ((existingRow?.source_osm_ids) || []).sort().join(',');
-  const geometryChanged = !bboxOverridden && osmLots.length > 0 && newKey !== oldKey;
+  let geometryChanged = !bboxOverridden && osmLots.length > 0 && newKey !== oldKey;
+
+  // ── Track 4: inferred-bbox fallback ──────────────────────────────────────────
+  // Fire when OSM parking ways don't produce an adequate bbox for the Place type.
+  // Two triggers: (a) no OSM ways returned → bbox is null; (b) union bbox below
+  // the per-type floor (too small to be the real lot).
+  // Skipped when bboxOverridden=true — existing healthy geometry is being kept.
+  const typeFloor = bboxFloorDeg2ForPlaceType(placeType);
+  let bboxSource = 'osm_union';
+
+  if (!bboxOverridden) {
+    const needsFallback = !bbox || bboxAreaDeg2(bbox) < typeFloor;
+    if (needsFallback) {
+      if (!bbox) {
+        console.log(`[upsertUnionLot] no_osm_data: no parking ways returned — trying inferred-bbox fallback`);
+      } else {
+        console.log(`[upsertUnionLot] low_osm_coverage: area=${(bboxAreaDeg2(bbox) * 1e10).toFixed(1)} below type-floor=${(typeFloor * 1e10).toFixed(1)} — trying inferred-bbox fallback`);
+      }
+      const fallback = await fetchInferredBbox(lat, lng, placeType, placeName);
+      if (fallback) {
+        bbox          = fallback.bbox;
+        bboxSource    = fallback.bboxSource;
+        geometryChanged = true; // inferred bbox always invalidates the detection cache
+      } else {
+        bboxSource = bbox ? 'low_osm_coverage' : null;
+      }
+    }
+  }
 
   if (existingRow) {
     // ── UPDATE existing row ──────────────────────────────────────────────────
@@ -237,14 +511,15 @@ async function upsertUnionLot({ lat, lng, placeName, googlePlaceId, placeType })
           bbox_west        = $8,
           geometry_wkt     = $9,
           source_osm_ids   = $10,
-          spot_detection_status = CASE WHEN $11 THEN 'pending'
+          bbox_source      = $11,
+          spot_detection_status = CASE WHEN $12 THEN 'pending'
                                        ELSE spot_detection_status END,
           updated_at       = NOW()
-        WHERE id = $12
+        WHERE id = $13
       `, [resolvedName, googlePlaceId, lat, lng,
           bbox.bbox_north, bbox.bbox_south, bbox.bbox_east, bbox.bbox_west,
           geometryWkt, JSON.stringify(sourceOsmIds),
-          geometryChanged, existingRow.id]);
+          bboxSource, geometryChanged, existingRow.id]);
     } else {
       // Overpass unavailable — update name and place anchor only, keep geometry.
       await pool.query(`
@@ -264,7 +539,7 @@ async function upsertUnionLot({ lat, lng, placeName, googlePlaceId, placeType })
 
     const upd = await pool.query(
       `SELECT id, lat, lng, name, lot_type, spot_detection_status,
-              bbox_north, bbox_south, bbox_east, bbox_west, place_lat, place_lng
+              bbox_north, bbox_south, bbox_east, bbox_west, place_lat, place_lng, bbox_source
        FROM lots WHERE id=$1`,
       [existingRow.id],
     );
@@ -284,9 +559,9 @@ async function upsertUnionLot({ lat, lng, placeName, googlePlaceId, placeType })
       (name, lot_type, lat, lng,
        bbox_north, bbox_south, bbox_east, bbox_west, geometry_wkt,
        region, spot_detection_status, source,
-       google_place_id, source_osm_ids, place_lat, place_lng)
+       google_place_id, source_osm_ids, place_lat, place_lng, bbox_source)
     VALUES
-      ($1,'surface',$2,$3,$4,$5,$6,$7,$8,'long_tail','pending','osm',$9,$10,$11,$12)
+      ($1,'surface',$2,$3,$4,$5,$6,$7,$8,'long_tail','pending','osm',$9,$10,$11,$12,$13)
     ON CONFLICT (google_place_id) WHERE google_place_id IS NOT NULL DO UPDATE SET
       name            = EXCLUDED.name,
       lat             = EXCLUDED.lat,
@@ -299,19 +574,20 @@ async function upsertUnionLot({ lat, lng, placeName, googlePlaceId, placeType })
       source_osm_ids  = EXCLUDED.source_osm_ids,
       place_lat       = EXCLUDED.place_lat,
       place_lng       = EXCLUDED.place_lng,
+      bbox_source     = EXCLUDED.bbox_source,
       spot_detection_status = 'pending',
       updated_at      = NOW()
     RETURNING id
   `, [resolvedName, lat, lng,
       bbox.bbox_north, bbox.bbox_south, bbox.bbox_east, bbox.bbox_west,
-      geometryWkt, googlePlaceId, JSON.stringify(sourceOsmIds), lat, lng]);
+      geometryWkt, googlePlaceId, JSON.stringify(sourceOsmIds), lat, lng, bboxSource]);
 
   const newId = ins.rows[0]?.id;
   if (!newId) return null;
 
   const sel = await pool.query(
     `SELECT id, lat, lng, name, lot_type, spot_detection_status,
-            bbox_north, bbox_south, bbox_east, bbox_west, place_lat, place_lng
+            bbox_north, bbox_south, bbox_east, bbox_west, place_lat, place_lng, bbox_source
      FROM lots WHERE id=$1`,
     [newId],
   );
@@ -607,7 +883,7 @@ router.get('/:id/rows', async (req, res) => {
   try {
     const lotRes = await pool.query(
       `SELECT id, lat, lng, bbox_north, bbox_south, bbox_east, bbox_west,
-              name, lot_type, spot_detection_status, place_lat, place_lng
+              name, lot_type, spot_detection_status, place_lat, place_lng, bbox_source
        FROM lots WHERE id=$1`,
       [req.params.id],
     );
