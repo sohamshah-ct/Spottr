@@ -172,10 +172,13 @@ router.get('/near', async (req, res) => {
   const lng = parseFloat(req.query.lng);
   if (isNaN(lat) || isNaN(lng)) return res.status(400).json({ error: 'lat and lng are required' });
 
+  // radius: default 800m for place-pin searches, max 2000m, min 50m
+  const radius = Math.min(Math.max(parseFloat(req.query.radius) || 800, 50), 2000);
+
   try {
     const distance = HAVERSINE_SQL(lat, lng);
 
-    // 1. Find existing lots within 200m
+    // 1. Find existing lots within radius
     let dbResult = await pool.query(`
       SELECT l.id, l.name, l.lot_type, l.address, l.city, l.state,
              l.lat, l.lng, l.total_spaces, l.region, l.spot_detection_status,
@@ -183,15 +186,15 @@ router.get('/near', async (req, res) => {
              ${distance} AS distance_meters
       FROM lots l
       WHERE l.lat IS NOT NULL AND l.lng IS NOT NULL
-        AND ${distance} <= 200
+        AND ${distance} <= ${radius}
       ORDER BY distance_meters ASC
       LIMIT 10
     `);
 
     // 2. No lots in DB — fetch from OSM on demand
     if (dbResult.rows.length === 0) {
-      console.log(`No lots within 200m of ${lat},${lng} — querying OSM`);
-      const osmLots = await fetchOsmParkingNear(lat, lng, 200);
+      console.log(`No lots within ${radius}m of ${lat},${lng} — querying OSM`);
+      const osmLots = await fetchOsmParkingNear(lat, lng, radius);
 
       for (const lot of osmLots) {
         await pool.query(`
@@ -211,7 +214,7 @@ router.get('/near', async (req, res) => {
                ${distance} AS distance_meters
         FROM lots l
         WHERE l.lat IS NOT NULL AND l.lng IS NOT NULL
-          AND ${distance} <= 200
+          AND ${distance} <= ${radius}
         ORDER BY distance_meters ASC
         LIMIT 10
       `);
