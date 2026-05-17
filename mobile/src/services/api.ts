@@ -81,9 +81,10 @@ export interface PlaceResult {
 }
 
 export const api = {
-  getLotsNear: (lat: number, lng: number, radius?: number) => {
+  getLotsNear: (lat: number, lng: number, radius?: number, placeName?: string) => {
     const params = new URLSearchParams({ lat: String(lat), lng: String(lng) });
     if (radius != null) params.set('radius', String(radius));
+    if (placeName) params.set('place_name', placeName);
     return apiFetch<LotsNearResponse>(`/api/lots/near?${params}`);
   },
 

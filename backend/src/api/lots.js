@@ -174,6 +174,8 @@ router.get('/near', async (req, res) => {
 
   // radius: default 800m for place-pin searches, max 2000m, min 50m
   const radius = Math.min(Math.max(parseFloat(req.query.radius) || 800, 50), 2000);
+  // place_name: display name from Places autocomplete — used as lot name when OSM has no tag
+  const placeName = typeof req.query.place_name === 'string' ? req.query.place_name.trim() || null : null;
 
   try {
     const distance = HAVERSINE_SQL(lat, lng);
@@ -197,12 +199,14 @@ router.get('/near', async (req, res) => {
       const osmLots = await fetchOsmParkingNear(lat, lng, radius);
 
       for (const lot of osmLots) {
+        // Name fallback: place_name from Places autocomplete → OSM tag → null
+        const lotName = lot.name || placeName || null;
         await pool.query(`
           INSERT INTO lots (osm_id, name, lot_type, lat, lng,
             bbox_north, bbox_south, bbox_east, bbox_west, geometry_wkt, region, spot_detection_status, source)
           VALUES ($1,$2,'surface',$3,$4,$5,$6,$7,$8,$9,'long_tail','pending','osm')
           ON CONFLICT (osm_id) DO NOTHING
-        `, [lot.osm_id, lot.name, lot.lat, lot.lng,
+        `, [lot.osm_id, lotName, lot.lat, lot.lng,
             lot.bbox_north, lot.bbox_south, lot.bbox_east, lot.bbox_west, lot.geometry_wkt]);
       }
 

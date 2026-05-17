@@ -264,7 +264,7 @@ function SearchSheet({ visible, onClose, userLat, userLng, onSelectLot }: Search
     setSearching(true);
     setNoParking(null);
     try {
-      const res = await api.getLotsNear(place.lat, place.lng, 800);
+      const res = await api.getLotsNear(place.lat, place.lng, 800, place.mainText);
       if (res.lots.length === 0) {
         setNoParking(place.mainText);
         setSearching(false);
