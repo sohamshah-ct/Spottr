@@ -38,10 +38,10 @@ const INSTITUTIONAL_TYPES = new Set([
 ]);
 
 function unionRadiusForPlaceType(placeType) {
-  if (!placeType) return 200;
+  if (!placeType) return 400;
   const t = placeType.toLowerCase();
-  for (const inst of INSTITUTIONAL_TYPES) { if (t.includes(inst)) return 300; }
-  return 200;
+  for (const inst of INSTITUTIONAL_TYPES) { if (t.includes(inst)) return 600; }
+  return 400;
 }
 
 // Bounding box of the union of all OSM way bboxes.
@@ -140,7 +140,9 @@ function computeZones(spaces, anchorLat, anchorLng) {
 // Returns the full lot row ready for getOrDetect().
 async function upsertUnionLot({ lat, lng, placeName, googlePlaceId, placeType }) {
   const unionRadius = unionRadiusForPlaceType(placeType);
-  const osmLots = await fetchOsmParkingNear(lat, lng, unionRadius);
+  // Union path: don't filter access=private — institutional lots (schools, hospitals)
+  // are often tagged private in OSM even though they're accessible to visitors.
+  const osmLots = await fetchOsmParkingNear(lat, lng, unionRadius, false);
 
   // Name: place_name always wins over OSM tag.
   const resolvedName = placeName || resolveOsmCommonName(osmLots) || null;
@@ -641,7 +643,7 @@ router.get('/:id/satellite', async (req, res) => {
 
 // ── OSM fallback ────────────────────────────────────────────────────────────
 
-async function fetchOsmParkingNear(lat, lng, radiusM) {
+async function fetchOsmParkingNear(lat, lng, radiusM, filterPrivate = true) {
   const query = `[out:json][timeout:15];(way["amenity"="parking"](around:${radiusM},${lat},${lng});relation["amenity"="parking"](around:${radiusM},${lat},${lng}););out body;>;out skel qt;`;
   try {
     const resp = await fetch('https://overpass-api.de/api/interpreter', {
@@ -660,9 +662,11 @@ async function fetchOsmParkingNear(lat, lng, radiusM) {
     const lots = [];
     for (const el of data.elements || []) {
       if (el.type !== 'way') continue;
-      // Skip privately gated lots — they belong to other businesses and should
-      // never be unioned into a public-facing lot.
-      if (el.tags?.access === 'private') continue;
+      // In GPS mode, skip privately-gated lots (filterPrivate=true).
+      // In union mode (place-pin), include them: institutional lots like schools
+      // and hospitals are often tagged access=private in OSM even though
+      // they're accessible during open hours.
+      if (filterPrivate && el.tags?.access === 'private') continue;
       const coords = (el.nodes || []).map(nid => nodeMap[nid]).filter(Boolean);
       if (coords.length < 3) continue;
       const lats = coords.map(c => c.lat), lngs = coords.map(c => c.lon);
