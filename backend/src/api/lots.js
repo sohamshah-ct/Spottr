@@ -245,7 +245,7 @@ async function upsertUnionLot({ lat, lng, placeName, googlePlaceId, placeType })
        google_place_id, source_osm_ids, place_lat, place_lng)
     VALUES
       ($1,'surface',$2,$3,$4,$5,$6,$7,$8,'long_tail','pending','osm',$9,$10,$11,$12)
-    ON CONFLICT (google_place_id) DO UPDATE SET
+    ON CONFLICT (google_place_id) WHERE google_place_id IS NOT NULL DO UPDATE SET
       name            = EXCLUDED.name,
       lat             = EXCLUDED.lat,
       lng             = EXCLUDED.lng,
