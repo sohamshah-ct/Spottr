@@ -142,7 +142,17 @@ async function upsertUnionLot({ lat, lng, placeName, googlePlaceId, placeType })
   const unionRadius = unionRadiusForPlaceType(placeType);
   // Union path: don't filter access=private — institutional lots (schools, hospitals)
   // are often tagged private in OSM even though they're accessible to visitors.
-  const osmLots = await fetchOsmParkingNear(lat, lng, unionRadius, false);
+  const allOsmLots = await fetchOsmParkingNear(lat, lng, unionRadius, false);
+
+  // Limit union to the MAX_UNION_WAYS ways whose centroids are closest to the
+  // place pin. This prevents over-union at densely-mapped sites (e.g. hospitals
+  // where every parking row is a separate OSM way) while still merging multi-
+  // section lots like SWHS (2 sections both within ~250m of the school centroid).
+  const MAX_UNION_WAYS = 8;
+  const osmLots = allOsmLots
+    .map(l => ({ ...l, _d: Math.hypot(l.lat - lat, l.lng - lng) }))
+    .sort((a, b) => a._d - b._d)
+    .slice(0, MAX_UNION_WAYS);
 
   // Name: place_name always wins over OSM tag.
   const resolvedName = placeName || resolveOsmCommonName(osmLots) || null;
