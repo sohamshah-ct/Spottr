@@ -644,7 +644,10 @@ router.get('/:id/satellite', async (req, res) => {
 // ── OSM fallback ────────────────────────────────────────────────────────────
 
 async function fetchOsmParkingNear(lat, lng, radiusM, filterPrivate = true) {
-  const query = `[out:json][timeout:15];(way["amenity"="parking"](around:${radiusM},${lat},${lng});relation["amenity"="parking"](around:${radiusM},${lat},${lng}););out body;>;out skel qt;`;
+  // Query only ways, not relations. Parking relations expand into their member ways
+  // which inflates the result pool and creates over-sized union bboxes.
+  // Multi-section lots (e.g. SWHS) are already covered by individual way geometries.
+  const query = `[out:json][timeout:15];way["amenity"="parking"](around:${radiusM},${lat},${lng});out body;>;out skel qt;`;
   try {
     const resp = await fetch('https://overpass-api.de/api/interpreter', {
       method: 'POST',
