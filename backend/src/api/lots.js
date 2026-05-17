@@ -38,10 +38,17 @@ const INSTITUTIONAL_TYPES = new Set([
 ]);
 
 function unionRadiusForPlaceType(placeType) {
-  if (!placeType) return 400;
+  if (!placeType) return 200;
   const t = placeType.toLowerCase();
-  for (const inst of INSTITUTIONAL_TYPES) { if (t.includes(inst)) return 600; }
-  return 400;
+  for (const inst of INSTITUTIONAL_TYPES) { if (t.includes(inst)) return 300; }
+  return 200;
+}
+
+// Minimum union bbox area we'll accept before flagging low_osm_coverage: ~80m × 80m.
+const BBOX_FLOOR_DEG2 = (80 / 111320) ** 2;
+
+function bboxAreaDeg2({ bbox_north, bbox_south, bbox_east, bbox_west }) {
+  return (bbox_north - bbox_south) * (bbox_east - bbox_west);
 }
 
 // Bounding box of the union of all OSM way bboxes.
@@ -140,9 +147,14 @@ function computeZones(spaces, anchorLat, anchorLng) {
 // Returns the full lot row ready for getOrDetect().
 async function upsertUnionLot({ lat, lng, placeName, googlePlaceId, placeType }) {
   const unionRadius = unionRadiusForPlaceType(placeType);
-  // Union path: don't filter access=private — institutional lots (schools, hospitals)
-  // are often tagged private in OSM even though they're accessible to visitors.
-  const allOsmLots = await fetchOsmParkingNear(lat, lng, unionRadius, false);
+  // Institutional lots (schools, hospitals, etc.) often tag their ways access=private
+  // in OSM even though they're accessible to visitors — include them.
+  // Commercial lots (supermarkets, big-box) should keep the private filter so we
+  // don't accidentally absorb adjacent restricted lots.
+  const isInstitutional = placeType
+    ? [...INSTITUTIONAL_TYPES].some(t => placeType.toLowerCase().includes(t))
+    : false;
+  const allOsmLots = await fetchOsmParkingNear(lat, lng, unionRadius, !isInstitutional);
 
   // Limit union to the MAX_UNION_WAYS ways whose centroids are closest to the
   // place pin. This prevents over-union at densely-mapped sites (e.g. hospitals
@@ -158,14 +170,14 @@ async function upsertUnionLot({ lat, lng, placeName, googlePlaceId, placeType })
   const resolvedName = placeName || resolveOsmCommonName(osmLots) || null;
 
   // Geometry: union bbox drives what Modal images; WKT is stored for reference.
-  const bbox         = osmLots.length > 0 ? computeUnionBbox(osmLots) : null;
+  let bbox           = osmLots.length > 0 ? computeUnionBbox(osmLots) : null;
   const geometryWkt  = osmLots.length > 0 ? buildMultiPolygonWkt(osmLots) : null;
   const sourceOsmIds = osmLots.map(l => l.osm_id);
 
   // ── Step 1: find by google_place_id ────────────────────────────────────────
   let existingRow = null;
   const byPlaceId = await pool.query(
-    'SELECT id, source_osm_ids FROM lots WHERE google_place_id=$1',
+    'SELECT id, source_osm_ids, bbox_north, bbox_south, bbox_east, bbox_west FROM lots WHERE google_place_id=$1',
     [googlePlaceId],
   );
   if (byPlaceId.rows[0]) existingRow = byPlaceId.rows[0];
@@ -174,17 +186,37 @@ async function upsertUnionLot({ lat, lng, placeName, googlePlaceId, placeType })
   if (!existingRow) {
     const distExpr = HAVERSINE_SQL(lat, lng);
     const byProximity = await pool.query(
-      `SELECT id, source_osm_ids FROM lots l
+      `SELECT id, source_osm_ids, bbox_north, bbox_south, bbox_east, bbox_west FROM lots l
        WHERE ${distExpr} < 150 AND l.google_place_id IS NULL
        ORDER BY (${distExpr}) ASC LIMIT 1`,
     );
     if (byProximity.rows[0]) existingRow = byProximity.rows[0];
   }
 
+  // ── Bbox-area regression guard ─────────────────────────────────────────────
+  // If the new union bbox area is < 50% of the existing lot's bbox area, or below
+  // the absolute 80m×80m floor, fall back to keeping existing geometry.  This
+  // prevents a bad OSM result (small auxiliary lot) from overwriting a healthy bbox.
+  // For brand-new lots with no existing row and a tiny bbox, log low_osm_coverage.
+  let bboxOverridden = false;
+  if (bbox && existingRow?.bbox_north != null) {
+    const newArea = bboxAreaDeg2(bbox);
+    const oldArea = bboxAreaDeg2(existingRow);
+    if (oldArea > 0 && (newArea < oldArea * 0.5 || newArea < BBOX_FLOOR_DEG2)) {
+      console.log(`[upsertUnionLot] bbox-regression-guard: new=${(newArea * 1e10).toFixed(1)} old=${(oldArea * 1e10).toFixed(1)} — keeping existing geometry`);
+      bbox = null;
+      bboxOverridden = true;
+    }
+  }
+  if (bbox && !existingRow && bboxAreaDeg2(bbox) < BBOX_FLOOR_DEG2) {
+    console.log(`[upsertUnionLot] low_osm_coverage: bbox area=${(bboxAreaDeg2(bbox) * 1e10).toFixed(1)} below floor (${(BBOX_FLOOR_DEG2 * 1e10).toFixed(1)})`);
+  }
+
   // Detect geometry change so we know whether to invalidate the detection cache.
+  // bboxOverridden means we kept existing geometry — treat as no change so cache survives.
   const newKey = [...sourceOsmIds].sort().join(',');
   const oldKey = ((existingRow?.source_osm_ids) || []).sort().join(',');
-  const geometryChanged = osmLots.length > 0 && newKey !== oldKey;
+  const geometryChanged = !bboxOverridden && osmLots.length > 0 && newKey !== oldKey;
 
   if (existingRow) {
     // ── UPDATE existing row ──────────────────────────────────────────────────
@@ -585,10 +617,14 @@ router.get('/:id/rows', async (req, res) => {
     const detection = await getOrDetect(lot);
     const spaces = detection.spaces || [];
 
-    // ── Legacy row grouping (kept for backward compatibility with mobile < Gate C) ──
+    // ── Row grouping: K-bucket partitioning (K=3 for <80 stripes, K=4 for ≥80) ──
+    // We ignore detect.py's raw row_label (which assigns one letter per 10 stripes
+    // and can produce 30+ zones) and re-bucket into at most 4 zones here.
+    // This also applies to cached detections, fixing prior over-labeled results.
+    const K = spaces.length < 80 ? 3 : 4;
     const rowMap = {};
     spaces.forEach((s, i) => {
-      const label = s.row_label || String.fromCharCode(65 + Math.floor(i / 10));
+      const label = String.fromCharCode(65 + Math.floor(i * K / Math.max(spaces.length, 1)));
       if (!rowMap[label]) rowMap[label] = { label, spaces: [], open: 0, total: 0 };
       rowMap[label].spaces.push(s);
       rowMap[label].total++;

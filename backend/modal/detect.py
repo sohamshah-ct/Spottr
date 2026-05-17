@@ -449,10 +449,14 @@ def detect_lot_spots(
     # ── 5. Build spaces ───────────────────────────────────────────────────────
     if sam2_ok:
         deduped = match_cars_to_stripes_latlng(deduped, all_cars, centroid_lat)
+        # K-bucket zone assignment: K=3 for <80 stripes, K=4 for ≥80.
+        # Divides stripes into K equal groups (A/B/C or A/B/C/D) instead of
+        # the old one-letter-per-10 scheme that produced 30+ zones on large lots.
+        _k = 3 if dedup_count < 80 else 4
         spaces = [
             {
-                "row_label": chr(65 + i // 10),
-                "space_num": (i % 10) + 1,
+                "row_label": chr(65 + (i * _k // dedup_count)),
+                "space_num": i + 1,
                 "lat": s["lat"], "lng": s["lng"],
                 "polygon": None,
                 "occupied": s.get("occupied", False),
