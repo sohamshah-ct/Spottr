@@ -205,7 +205,7 @@ router.get('/near', async (req, res) => {
           INSERT INTO lots (osm_id, name, lot_type, lat, lng,
             bbox_north, bbox_south, bbox_east, bbox_west, geometry_wkt, region, spot_detection_status, source)
           VALUES ($1,$2,'surface',$3,$4,$5,$6,$7,$8,$9,'long_tail','pending','osm')
-          ON CONFLICT (osm_id) DO NOTHING
+          ON CONFLICT (osm_id) DO UPDATE SET name = EXCLUDED.name WHERE lots.name IS NULL
         `, [lot.osm_id, lotName, lot.lat, lot.lng,
             lot.bbox_north, lot.bbox_south, lot.bbox_east, lot.bbox_west, lot.geometry_wkt]);
       }
