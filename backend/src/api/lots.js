@@ -5,7 +5,12 @@ const pool = require('../db/pool');
 const fetch = (...args) => import('node-fetch').then(({ default: f }) => f(...args));
 
 const MODAL_DETECT_URL = process.env.MODAL_DETECT_URL;
-const CACHE_TTL_HOURS = 4;
+const CACHE_TTL_HOURS = 168; // 7 days — lot layouts and Mapbox imagery don't change in hours
+
+// In-flight deduplication: if two requests arrive for the same lot before the
+// cache is populated, only one Modal call is made. All concurrent callers await
+// the same promise and receive the same result.
+const inFlightDetections = new Map();
 
 const HAVERSINE_SQL = (lat, lng, latCol = 'l.lat', lngCol = 'l.lng') => `
   (6371000 * 2 * ASIN(SQRT(
@@ -121,31 +126,42 @@ async function getOrDetect(lot) {
     };
   }
 
-  // 2. Cache miss — call Modal
-  try {
-    const result = await invokeModal(lot);
-    await saveDetectionCache(lot, result);
-    return {
-      spaces: result.spaces || [],
-      detection_age_seconds: 0,
-      source: result.source,
-      confidence: result.overall_confidence,
-      cached: false,
-      modal_duration_ms: result.duration_ms,
-      cars_detected: result.cars_detected,
-      sam2_stripes_found: result.sam2_stripes_found,
-    };
-  } catch (err) {
-    console.error(`Modal detection failed for lot ${lot.id}:`, err.message);
-    return {
-      spaces: [],
-      detection_age_seconds: null,
-      source: 'modal_failed',
-      confidence: 0,
-      cached: false,
-      error: 'Detection temporarily unavailable',
-    };
+  // 2. Cache miss — call Modal, but coalesce concurrent requests for the same lot.
+  if (inFlightDetections.has(lot.id)) {
+    return inFlightDetections.get(lot.id);
   }
+
+  const detection = (async () => {
+    try {
+      const result = await invokeModal(lot);
+      await saveDetectionCache(lot, result);
+      return {
+        spaces: result.spaces || [],
+        detection_age_seconds: 0,
+        source: result.source,
+        confidence: result.overall_confidence,
+        cached: false,
+        modal_duration_ms: result.duration_ms,
+        cars_detected: result.cars_detected,
+        sam2_stripes_found: result.sam2_stripes_found,
+      };
+    } catch (err) {
+      console.error(`Modal detection failed for lot ${lot.id}:`, err.message);
+      return {
+        spaces: [],
+        detection_age_seconds: null,
+        source: 'modal_failed',
+        confidence: 0,
+        cached: false,
+        error: 'Detection temporarily unavailable',
+      };
+    } finally {
+      inFlightDetections.delete(lot.id);
+    }
+  })();
+
+  inFlightDetections.set(lot.id, detection);
+  return detection;
 }
 
 // ── Routes ─────────────────────────────────────────────────────────────────
