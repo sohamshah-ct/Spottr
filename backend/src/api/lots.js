@@ -645,10 +645,16 @@ async function fetchOsmParkingNear(lat, lng, radiusM) {
   const query = `[out:json][timeout:15];(way["amenity"="parking"](around:${radiusM},${lat},${lng});relation["amenity"="parking"](around:${radiusM},${lat},${lng}););out body;>;out skel qt;`;
   try {
     const resp = await fetch('https://overpass-api.de/api/interpreter', {
-      method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'Spottr/1.0 (parking availability app; github.com/spottr)',
+      },
       body: `data=${encodeURIComponent(query)}`,
     });
     const data = await resp.json();
+    const wayCount = (data.elements || []).filter(e => e.type === 'way').length;
+    console.log(`[Overpass] ${wayCount} way(s) returned for (${lat},${lng}) r=${radiusM}m`);
     const nodeMap = {};
     for (const el of data.elements || []) { if (el.type === 'node') nodeMap[el.id] = el; }
     const lots = [];
