@@ -190,14 +190,28 @@ function clampBboxToArea(bbox, maxAreaDeg2, anchorLat, anchorLng) {
 
 // Strategy A — building-anchored inference (commercial primary, institutional fallback).
 //
-// Selection rule:
-//   Commercial  → nearest building, name-match as priority override.
-//   Institutional → LARGEST building by footprint area.
-//   Empirical justification: at SWHS the nearest building is a 68×10m breezeway
-//   at 94m from the pin; the correct anchor (main school building) is 116×89m at
-//   240m.  Nearest-first fails for multi-building campuses.
+// Selection and centering rules (three cases):
+//
+//   warehouse_store:  Search radius 500m (Places pin lands at lot entrance, 300-400m
+//                     from the actual warehouse building — empirically verified for
+//                     Costco South Windsor: DB pin is 345m from the building).
+//                     Select LARGEST building ≥ 5,000m² (filters entrance kiosks).
+//                     Bbox centered on BUILDING CENTROID (pin is outside parking area).
+//
+//   other commercial: Search radius 250m.  Nearest building, name-match priority.
+//   (dept_store,      Bbox centered on PLACE PIN (pin and building are close —
+//    grocery, mall)   confirmed: Target pin is 11m from building).
+//
+//   institutional:    Search radius 300m.  Largest building by footprint (correct for
+//                     multi-building campuses — SWHS nearest is 68×10m breezeway at
+//                     94m; main building is 116×89m at 240m).
+//                     Bbox centered on PLACE PIN via Strategy B landuse polygon
+//                     (Strategy A is institutional fallback only).
 async function tryStrategyA(lat, lng, placeType, placeName, isInstitutional) {
-  const searchRadius = isInstitutional ? 300 : 250;
+  const isWarehouseStore = (placeType || '').toLowerCase().includes('warehouse_store');
+
+  // Search radius: warehouse stores need wider net — Places pin is at lot entrance.
+  const searchRadius = isInstitutional ? 300 : (isWarehouseStore ? 500 : 250);
   const query = `[out:json][timeout:15];way["building"](around:${searchRadius},${lat},${lng});out body;>;out skel qt;`;
   try {
     const resp = await fetch('https://overpass-api.de/api/interpreter', {
@@ -231,7 +245,7 @@ async function tryStrategyA(lat, lng, placeType, placeName, isInstitutional) {
         // Name match: first token of placeName (e.g. "Costco" from "Costco Wholesale")
         const firstToken = (placeName || '').toLowerCase().split(/\s+/)[0];
         const nameMatch = firstToken.length > 2 && (w.tags?.name || '').toLowerCase().includes(firstToken);
-        return { w, N, S, E, W, hM, wM, areaM2, dist, nameMatch };
+        return { w, N, S, E, W, hM, wM, areaM2, dist, cLat, cLng, nameMatch };
       })
       .filter(Boolean);
 
@@ -243,10 +257,15 @@ async function tryStrategyA(lat, lng, placeType, placeName, isInstitutional) {
     // Select anchor building per type-specific rule.
     let anchor;
     if (isInstitutional) {
-      // Largest footprint — correct for multi-building campuses.
+      // Institutional: largest footprint (correct for multi-building campuses).
       anchor = candidates.sort((a, b) => b.areaM2 - a.areaM2)[0];
+    } else if (isWarehouseStore) {
+      // Warehouse stores: largest building above 5,000m² floor.
+      // Filters out entrance kiosks (≪1,000m²) in favour of the warehouse itself.
+      const large = candidates.filter(b => b.areaM2 >= 5000);
+      anchor = (large.length > 0 ? large : candidates).sort((a, b) => b.areaM2 - a.areaM2)[0];
     } else {
-      // Commercial: name-match candidates first, then nearest.
+      // Other commercial: name-match candidates first, then nearest.
       const nameMatches = candidates.filter(b => b.nameMatch);
       anchor = nameMatches.length > 0
         ? nameMatches.sort((a, b) => a.dist - b.dist)[0]
@@ -263,18 +282,28 @@ async function tryStrategyA(lat, lng, placeType, placeName, isInstitutional) {
       bbox_west:  anchor.W - bufLng,
     };
 
-    // Pin containment assertion: the inferred bbox must contain the Place pin.
-    // If the anchor building is very far from the pin, the buffer may not reach it.
-    if (lat < bbox.bbox_south || lat > bbox.bbox_north ||
-        lng < bbox.bbox_west  || lng > bbox.bbox_east) {
-      console.log(`[inferred-bbox] strategy-A: pin (${lat},${lng}) outside inferred bbox — anchor too far, skipping`);
-      return null;
+    // Pin containment assertion — applies to other-commercial and institutional only.
+    // warehouse_store is exempt: the Place pin is intentionally outside the bbox
+    // (it sits at the lot entrance while the bbox is centred on the warehouse building).
+    if (!isWarehouseStore) {
+      if (lat < bbox.bbox_south || lat > bbox.bbox_north ||
+          lng < bbox.bbox_west  || lng > bbox.bbox_east) {
+        console.log(`[inferred-bbox] strategy-A: pin (${lat},${lng}) outside inferred bbox — anchor too far, skipping`);
+        return null;
+      }
     }
 
-    const maxArea = isInstitutional ? MAX_INFERRED_DEG2_INSTITUTIONAL : MAX_INFERRED_DEG2_COMMERCIAL;
-    bbox = clampBboxToArea(bbox, maxArea, lat, lng);
+    // Centering rules for clampBboxToArea:
+    //   warehouse_store  → building centroid (Places pin is at lot entrance, not lot centre)
+    //   other commercial → Place pin (pin and building are close)
+    //   institutional    → Place pin (Strategy A is fallback; Strategy B uses polygon centroid)
+    const clampLat = isWarehouseStore ? anchor.cLat : lat;
+    const clampLng = isWarehouseStore ? anchor.cLng : lng;
 
-    console.log(`[inferred-bbox] strategy-A OK: way${anchor.w.id} "${anchor.w.tags?.name || ''}" ${anchor.hM.toFixed(0)}x${anchor.wM.toFixed(0)}m +${bufM}m → ${((bbox.bbox_north - bbox.bbox_south) * 111320).toFixed(0)}x${((bbox.bbox_east - bbox.bbox_west) * 111320 * Math.cos(lat * Math.PI / 180)).toFixed(0)}m`);
+    const maxArea = isInstitutional ? MAX_INFERRED_DEG2_INSTITUTIONAL : MAX_INFERRED_DEG2_COMMERCIAL;
+    bbox = clampBboxToArea(bbox, maxArea, clampLat, clampLng);
+
+    console.log(`[inferred-bbox] strategy-A OK: way${anchor.w.id} "${anchor.w.tags?.name || ''}" ${anchor.hM.toFixed(0)}x${anchor.wM.toFixed(0)}m +${bufM}m → ${((bbox.bbox_north - bbox.bbox_south) * 111320).toFixed(0)}x${((bbox.bbox_east - bbox.bbox_west) * 111320 * Math.cos(lat * Math.PI / 180)).toFixed(0)}m (centred on ${isWarehouseStore ? 'building' : 'pin'})`);
     return { bbox, bboxSource: 'building_inferred' };
   } catch (e) {
     console.error('[inferred-bbox] strategy-A error:', e.message);
