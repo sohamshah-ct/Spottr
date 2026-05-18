@@ -49,7 +49,10 @@ STRIPE_MAX_AREA = 8000
 STRIPE_MIN_AR   = 1.3
 STRIPE_MAX_AR   = 6.0
 
-MAX_TILES      = 16               # 4×4 hard cap; larger lots fall back to grid
+MAX_TILES      = 25               # 5×5 hard cap; larger lots fall back to grid
+                                   # Raised from 16 (Track 4.1): 220m buffer around a ~165m
+                                   # warehouse building → 606m bbox → 5×5=25 tiles at z19.
+                                   # Aligns with MAX_INFERRED_DEG2_WAREHOUSE (710m equivalent).
 DEDUP_RADIUS_M = 3.0              # stripes within 3m = same stall; keep higher-confidence one
 CAR_MATCH_M    = 5.0              # car within 5m of stripe center → mark occupied
 
