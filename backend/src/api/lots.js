@@ -161,13 +161,16 @@ function bboxFloorDeg2ForPlaceType(placeType) {
 // 3 sides; 80–130m covers most big-box lot depths.
 function buildingBufferMeters(placeType) {
   const t = (placeType || '').toLowerCase();
-  if (t.includes('warehouse_store'))                       return 130;
+  if (t.includes('warehouse_store'))                       return 220;
   if (t.includes('department_store') || t.includes('shopping_mall')) return 100;
   return 80; // grocery_store, supermarket, default commercial
 }
 
 // Max bbox area caps (deg²) — prevents imaging a 2km² area when OSM has an
 // oversized building or landuse polygon.
+// warehouse_store: 220m buffer around a ~165m-wide building → pre-clamp ~606×605m
+// (3.975e-5 deg²). Set to 710m-equivalent so the cap never binds on that geometry.
+const MAX_INFERRED_DEG2_WAREHOUSE     = (710 / 111320) ** 2; // ~406,000 m²
 const MAX_INFERRED_DEG2_COMMERCIAL    = (400 / 111320) ** 2; // 160,000 m²
 const MAX_INFERRED_DEG2_INSTITUTIONAL = (500 / 111320) ** 2; // 250,000 m²
 
@@ -192,11 +195,12 @@ function clampBboxToArea(bbox, maxAreaDeg2, anchorLat, anchorLng) {
 //
 // Selection and centering rules (three cases):
 //
-//   warehouse_store:  Search radius 500m (Places pin lands at lot entrance, 300-400m
-//                     from the actual warehouse building — empirically verified for
-//                     Costco South Windsor: DB pin is 345m from the building).
-//                     Select LARGEST building ≥ 5,000m² (filters entrance kiosks).
-//                     Bbox centered on BUILDING CENTROID (pin is outside parking area).
+//   warehouse_store:  Search radius 500m. Select LARGEST building ≥ 5,000m²
+//                     (filters entrance kiosks). Bbox centred on BUILDING CENTROID.
+//                     Costco South Windsor (real Places pin 41.8179375,-72.5563284):
+//                     pin is ~62m from building centroid, inside the building footprint.
+//                     The 345m/310m figures from earlier debugging used a hardcoded
+//                     test coordinate (41.8184,-72.5522) — that value is retired.
 //
 //   other commercial: Search radius 250m.  Nearest building, name-match priority.
 //   (dept_store,      Bbox centered on PLACE PIN (pin and building are close —
@@ -283,8 +287,9 @@ async function tryStrategyA(lat, lng, placeType, placeName, isInstitutional) {
     };
 
     // Pin containment assertion — applies to other-commercial and institutional only.
-    // warehouse_store is exempt: the Place pin is intentionally outside the bbox
-    // (it sits at the lot entrance while the bbox is centred on the warehouse building).
+    // warehouse_store is exempt. With a 220m buffer the pin is typically inside the bbox,
+    // but the exemption is retained as defensive code for future warehouse lots where
+    // the pin may be at a lot entrance outside the building-centred bbox.
     if (!isWarehouseStore) {
       if (lat < bbox.bbox_south || lat > bbox.bbox_north ||
           lng < bbox.bbox_west  || lng > bbox.bbox_east) {
@@ -300,7 +305,11 @@ async function tryStrategyA(lat, lng, placeType, placeName, isInstitutional) {
     const clampLat = isWarehouseStore ? anchor.cLat : lat;
     const clampLng = isWarehouseStore ? anchor.cLng : lng;
 
-    const maxArea = isInstitutional ? MAX_INFERRED_DEG2_INSTITUTIONAL : MAX_INFERRED_DEG2_COMMERCIAL;
+    const maxArea = isWarehouseStore
+      ? MAX_INFERRED_DEG2_WAREHOUSE
+      : isInstitutional
+        ? MAX_INFERRED_DEG2_INSTITUTIONAL
+        : MAX_INFERRED_DEG2_COMMERCIAL;
     bbox = clampBboxToArea(bbox, maxArea, clampLat, clampLng);
 
     console.log(`[inferred-bbox] strategy-A OK: way${anchor.w.id} "${anchor.w.tags?.name || ''}" ${anchor.hM.toFixed(0)}x${anchor.wM.toFixed(0)}m +${bufM}m → ${((bbox.bbox_north - bbox.bbox_south) * 111320).toFixed(0)}x${((bbox.bbox_east - bbox.bbox_west) * 111320 * Math.cos(lat * Math.PI / 180)).toFixed(0)}m (centred on ${isWarehouseStore ? 'building' : 'pin'})`);
