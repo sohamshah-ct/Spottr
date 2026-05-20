@@ -5,7 +5,8 @@ const pool = require('../db/pool');
 const fetch = (...args) => import('node-fetch').then(({ default: f }) => f(...args));
 
 const MODAL_DETECT_URL = process.env.MODAL_DETECT_URL;
-const CACHE_TTL_HOURS = 168; // 7 days — lot layouts and Mapbox imagery don't change in hours
+const CACHE_TTL_HOURS = 168; // 7 days — lot layouts and imagery don't change in hours
+const { computeFreshness } = require('../services/freshness');
 
 // In-flight deduplication: if two requests arrive for the same lot before the
 // cache is populated, only one Modal call is made. All concurrent callers await
@@ -577,7 +578,8 @@ async function upsertUnionLot({ lat, lng, placeName, googlePlaceId, placeType })
 
     const upd = await pool.query(
       `SELECT id, lat, lng, name, lot_type, spot_detection_status,
-              bbox_north, bbox_south, bbox_east, bbox_west, place_lat, place_lng, bbox_source
+              bbox_north, bbox_south, bbox_east, bbox_west, place_lat, place_lng, bbox_source,
+              besttime_venue_id
        FROM lots WHERE id=$1`,
       [existingRow.id],
     );
@@ -625,7 +627,8 @@ async function upsertUnionLot({ lat, lng, placeName, googlePlaceId, placeType })
 
   const sel = await pool.query(
     `SELECT id, lat, lng, name, lot_type, spot_detection_status,
-            bbox_north, bbox_south, bbox_east, bbox_west, place_lat, place_lng, bbox_source
+            bbox_north, bbox_south, bbox_east, bbox_west, place_lat, place_lng, bbox_source,
+            besttime_venue_id
      FROM lots WHERE id=$1`,
     [newId],
   );
@@ -793,7 +796,8 @@ router.get('/near', async (req, res) => {
       const lot = await upsertUnionLot({ lat, lng, placeName, googlePlaceId, placeType });
       if (!lot) return res.json({ lots: [], count: 0, source: 'no_osm_data' });
       const detection = await getOrDetect(lot);
-      return res.json({ lots: [{ ...lot, ...detection }], count: 1, source: 'place_pin' });
+      const freshness = await computeFreshness(lot, detection.detection_age_seconds ?? null);
+      return res.json({ lots: [{ ...lot, ...detection, freshness_state: freshness.state, freshness_label: freshness.label }], count: 1, source: 'place_pin' });
     }
 
     // ── GPS mode (unchanged from Track 2) ───────────────────────────────────
@@ -804,6 +808,7 @@ router.get('/near', async (req, res) => {
       SELECT l.id, l.name, l.lot_type, l.address, l.city, l.state,
              l.lat, l.lng, l.total_spaces, l.region, l.spot_detection_status,
              l.bbox_north, l.bbox_south, l.bbox_east, l.bbox_west,
+             l.bbox_source, l.place_lat, l.place_lng, l.besttime_venue_id,
              ${distance} AS distance_meters
       FROM lots l
       WHERE l.lat IS NOT NULL AND l.lng IS NOT NULL
@@ -834,6 +839,7 @@ router.get('/near', async (req, res) => {
         SELECT l.id, l.name, l.lot_type, l.address, l.city, l.state,
                l.lat, l.lng, l.total_spaces, l.region, l.spot_detection_status,
                l.bbox_north, l.bbox_south, l.bbox_east, l.bbox_west,
+               l.bbox_source, l.place_lat, l.place_lng, l.besttime_venue_id,
                ${distance} AS distance_meters
         FROM lots l
         WHERE l.lat IS NOT NULL AND l.lng IS NOT NULL
@@ -851,7 +857,8 @@ router.get('/near', async (req, res) => {
     const lotsWithDetections = await Promise.all(
       dbResult.rows.map(async (lot) => {
         const detection = await getOrDetect(lot);
-        return { ...lot, ...detection };
+        const freshness = await computeFreshness(lot, detection.detection_age_seconds ?? null);
+        return { ...lot, ...detection, freshness_state: freshness.state, freshness_label: freshness.label };
       })
     );
 
