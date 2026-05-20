@@ -62,13 +62,13 @@ async function computeFreshness(lot, detectionAgeSec) {
 }
 
 function formatDetectionAge(sec) {
-  if (sec < 60) return 'Imaged just now';
+  if (sec < 60) return 'scanned just now';
   if (sec < 3600) {
-    const m = Math.round(sec / 60);
-    return `Imaged ${m}m ago`;
+    const m = Math.ceil(sec / 60);
+    return `scanned ${m} min ago`;
   }
   const h = Math.round(sec / 3600);
-  return `Imaged ${h}h ago`;
+  return `scanned ${h}h ago`;
 }
 
 module.exports = { computeFreshness };

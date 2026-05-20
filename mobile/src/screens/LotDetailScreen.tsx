@@ -79,10 +79,15 @@ export default function LotDetailScreen({ route, navigation }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [showMarkers, setShowMarkers] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [slowLoad, setSlowLoad] = useState(false);
 
   const load = useCallback(async (isRefresh = false) => {
+    let slowTimer: ReturnType<typeof setTimeout> | null = null;
     try {
-      if (!isRefresh) setLoading(true);
+      if (!isRefresh) {
+        setLoading(true);
+        slowTimer = setTimeout(() => setSlowLoad(true), 30000);
+      }
       setError(null);
       const [rowsRes, lotRes] = await Promise.all([
         api.getLotRows(lotId),
@@ -93,6 +98,8 @@ export default function LotDetailScreen({ route, navigation }: Props) {
     } catch (e: any) {
       setError(e.message ?? 'Failed to load');
     } finally {
+      if (slowTimer) clearTimeout(slowTimer);
+      setSlowLoad(false);
       setLoading(false);
       setRefreshing(false);
     }
@@ -115,6 +122,9 @@ export default function LotDetailScreen({ route, navigation }: Props) {
       <View style={[styles.root, styles.center]}>
         <ActivityIndicator size="large" color={colors.a} />
         <Text style={styles.loadingText}>{lotName ?? 'Loading lot…'}</Text>
+        {slowLoad && (
+          <Text style={styles.slowText}>Still working… large lots take a moment</Text>
+        )}
       </View>
     );
   }
@@ -151,50 +161,52 @@ export default function LotDetailScreen({ route, navigation }: Props) {
 
   return (
     <View style={styles.root}>
-      {/* ── Map (190px per spec .det .mw) ───────────────────────────────── */}
-      <MapView
-        style={styles.map}
-        region={mapRegion}
-        showsUserLocation={false}
-        showsMyLocationButton={false}
-        showsCompass={false}
-        rotateEnabled={false}
-        scrollEnabled={false}
-        zoomEnabled={false}
-        pitchEnabled={false}
-      >
-        {!!MAPBOX_TOKEN && (
-          <UrlTile urlTemplate={MAPBOX_TILE_URL} maximumZ={19} flipY={false} tileSize={256} />
-        )}
-        {/* Centre pin */}
-        <Marker coordinate={{ latitude: displayLot.lat, longitude: displayLot.lng }} anchor={{ x: 0.5, y: 1 }}>
-          <View style={styles.centerPin}>
-            <Text style={styles.centerPinText}>P</Text>
-          </View>
-        </Marker>
-        {/* AI Map: space dots when showMarkers is true */}
-        {showMarkers && allSpaces.map((sp, i) => (
-          <Circle
-            key={i}
-            center={{ latitude: sp.lat, longitude: sp.lng }}
-            radius={1.2}
-            strokeColor={sp.occupied ? colors.full : colors.a}
-            fillColor={sp.occupied ? colors.full : colors.a}
-            strokeWidth={0}
-          />
-        ))}
-      </MapView>
+      {/* ── Map container (190px) — toggle lives inside to stay above sheet ── */}
+      <View style={styles.mapContainer}>
+        <MapView
+          style={styles.map}
+          region={mapRegion}
+          showsUserLocation={false}
+          showsMyLocationButton={false}
+          showsCompass={false}
+          rotateEnabled={false}
+          scrollEnabled={false}
+          zoomEnabled={false}
+          pitchEnabled={false}
+        >
+          {!!MAPBOX_TOKEN && (
+            <UrlTile urlTemplate={MAPBOX_TILE_URL} maximumZ={19} flipY={false} tileSize={256} />
+          )}
+          {/* Centre pin */}
+          <Marker coordinate={{ latitude: displayLot.lat, longitude: displayLot.lng }} anchor={{ x: 0.5, y: 1 }}>
+            <View style={styles.centerPin}>
+              <Text style={styles.centerPinText}>P</Text>
+            </View>
+          </Marker>
+          {/* AI Map: space dots when showMarkers is true */}
+          {showMarkers && allSpaces.map((sp, i) => (
+            <Circle
+              key={i}
+              center={{ latitude: sp.lat, longitude: sp.lng }}
+              radius={1.2}
+              strokeColor={sp.occupied ? colors.full : colors.a}
+              fillColor={sp.occupied ? colors.full : colors.a}
+              strokeWidth={0}
+            />
+          ))}
+        </MapView>
 
-      {/* Live Sat toggle */}
-      <TouchableOpacity
-        style={styles.satToggle}
-        onPress={() => setShowMarkers(v => !v)}
-        activeOpacity={0.8}
-      >
-        <Text style={[styles.satToggleText, showMarkers && styles.satToggleActive]}>
-          Live Sat
-        </Text>
-      </TouchableOpacity>
+        {/* Live Sat toggle — inside map container so it stays above the sheet */}
+        <TouchableOpacity
+          style={styles.satToggle}
+          onPress={() => setShowMarkers(v => !v)}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.satToggleText, showMarkers && styles.satToggleActive]}>
+            Live Sat
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       {/* ── Detail sheet ─────────────────────────────────────────────────── */}
       <View style={[styles.sheet, { paddingBottom: insets.bottom + 12 }]}>
@@ -227,8 +239,19 @@ export default function LotDetailScreen({ route, navigation }: Props) {
           {/* ── Freshness (.fr) ───────────────────────────────────────── */}
           <FreshnessLabel label={freshLabel} style={styles.fr} />
 
-          {/* ── Zone thumbnail ────────────────────────────────────────── */}
+          {/* ── Zone thumbnail (best zone) + remaining zones ──────────── */}
           {rows.length > 0 && <ZoneThumbnail rows={rows} />}
+          {rows.length > 1 && (
+            [...rows]
+              .sort((a, b) => b.open - a.open)
+              .slice(1)
+              .map(row => (
+                <View key={row.label} style={styles.zoneRow}>
+                  <Text style={styles.zoneRowLabel}>Zone {row.label}</Text>
+                  <Text style={styles.zoneRowCount}>{row.open} / {row.total} open</Text>
+                </View>
+              ))
+          )}
 
           {/* ── "Take me there" CTA (.tk) ─────────────────────────────── */}
           <TouchableOpacity
@@ -278,6 +301,14 @@ const styles = StyleSheet.create({
     color: colors.t3,
     marginTop: 12,
   },
+  slowText: {
+    fontFamily: fonts.sans,
+    fontSize: 13,
+    color: colors.t4,
+    marginTop: 8,
+    textAlign: 'center',
+    paddingHorizontal: 32,
+  },
   errorText: {
     fontFamily: fonts.sans,
     fontSize: 14,
@@ -300,7 +331,11 @@ const styles = StyleSheet.create({
     color: colors.a,
   },
 
-  // Map
+  // Map container — explicit height so toggle is positioned within it, not behind the sheet
+  mapContainer: {
+    height: MAP_HEIGHT,
+    width: '100%',
+  },
   map: {
     height: MAP_HEIGHT,
     width: '100%',
@@ -323,10 +358,10 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '-45deg' }],
   },
 
-  // Live Sat toggle
+  // Live Sat toggle — positioned inside mapContainer so it's above the sheet
   satToggle: {
     position: 'absolute',
-    top: MAP_HEIGHT - 36,
+    top: 12,
     right: 14,
     backgroundColor: 'rgba(10,10,10,0.75)',
     borderWidth: 0.5,
@@ -457,5 +492,27 @@ const styles = StyleSheet.create({
     fontFamily: fonts.mono,
     fontSize: 13,
     color: colors.t2,
+  },
+
+  // Additional zone rows (below best-zone ZoneThumbnail)
+  zoneRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    marginBottom: 6,
+    backgroundColor: colors.s2,
+    borderRadius: 9,
+  },
+  zoneRowLabel: {
+    fontFamily: fonts.sansMd,
+    fontSize: 13,
+    color: colors.t1,
+  },
+  zoneRowCount: {
+    fontFamily: fonts.mono,
+    fontSize: 12,
+    color: colors.t3,
   },
 });

@@ -793,11 +793,27 @@ router.get('/near', async (req, res) => {
     // a specific Places autocomplete result rather than browsing GPS-nearby lots.
     // All union / name-resolution / zone logic lives in upsertUnionLot().
     if (googlePlaceId) {
-      const lot = await upsertUnionLot({ lat, lng, placeName, googlePlaceId, placeType });
+      // Fast path: lot already cached under this place_id — skip Overpass entirely.
+      // This guarantees the correct row is returned even when the caller's lat/lng
+      // is imprecise (e.g. falls back to user location instead of place centroid).
+      const cached = await pool.query(
+        `SELECT id, lat, lng, name, lot_type, spot_detection_status,
+                bbox_north, bbox_south, bbox_east, bbox_west,
+                place_lat, place_lng, bbox_source, besttime_venue_id
+         FROM lots WHERE google_place_id = $1 LIMIT 1`,
+        [googlePlaceId],
+      );
+      const lot = cached.rows[0]
+        ? cached.rows[0]
+        : await upsertUnionLot({ lat, lng, placeName, googlePlaceId, placeType });
       if (!lot) return res.json({ lots: [], count: 0, source: 'no_osm_data' });
       const detection = await getOrDetect(lot);
       const freshness = await computeFreshness(lot, detection.detection_age_seconds ?? null);
-      return res.json({ lots: [{ ...lot, ...detection, freshness_state: freshness.state, freshness_label: freshness.label }], count: 1, source: 'place_pin' });
+      return res.json({
+        lots: [{ ...lot, ...detection, freshness_state: freshness.state, freshness_label: freshness.label }],
+        count: 1,
+        source: cached.rows[0] ? 'place_pin_cached' : 'place_pin',
+      });
     }
 
     // ── GPS mode (unchanged from Track 2) ───────────────────────────────────
