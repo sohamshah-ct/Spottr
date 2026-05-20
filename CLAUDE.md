@@ -210,9 +210,25 @@ The following design decisions must be resolved before Gate C implementation sta
 
 ---
 
-## Current state summary (as of Track 4.1 close, 2026-05-18)
+## V6 deferred items (flagged during Gate C Gate 1)
+
+### entrance_lat / entrance_lng — per-lot navigation precision
+
+`place_lat` / `place_lng` from the Places API pin is used as the "Take me there"
+destination in Gate C (sub-100m accuracy, good enough for MVP). For V6, add
+`entrance_lat` / `entrance_lng` columns with manual override per flagship lot for
+sub-50m precision (e.g. specific lot entrance, not building centroid).
+
+Migration: `ALTER TABLE lots ADD COLUMN entrance_lat FLOAT, ADD COLUMN entrance_lng FLOAT;`
+Seed manually for Costco South Windsor, Sam's Club Newington, BJ's Manchester.
+Mobile: prefer `entrance_lat` → `place_lat` → `lat` when constructing Maps deeplink.
+
+---
+
+## Current state summary (as of Gate C close, 2026-05-19)
 
 **MVP backend: COMPLETE.**
+**Gate C mobile screens: COMPLETE (7 commits).**
 
 Lot categories covered and validated:
 - Institutional (Strategy B / landuse-anchored): SWHS 139 spaces, 170×261m, osm_union
@@ -223,7 +239,19 @@ Lot categories covered and validated:
   Costco South Windsor 640 spaces, 606×605m, building_inferred;
   Sam's Club Newington 477 spaces, 593×563m, building_inferred
 
-**Next critical-path work:** Gate C design decisions → Gate C implementation
-(Home S3, Search S4, Lot Detail S5 screens).
+Gate C delivered:
+- Freshness state machine A→B→C→D (backend/src/services/freshness.js)
+- BestTime.app service wiring, disabled for Iteration A (BESTTIME_ENABLED=false)
+- Migration 007: besttime_venue_id column on lots
+- Shared components: FreshnessLabel, LotCard, BigNumberCount, ConfidencePill,
+  ZoneThumbnail, SearchBar
+- HomeScreen: MapView + BottomSheet 30%/60%/95% + lot pins + nearby/recent lots
+- SearchScreen: map strip + Places autocomplete + recent searches
+- LotDetailScreen: lot bbox MapView + AI Map (circle markers) + BigNumberCount +
+  FreshnessLabel + ZoneThumbnail + "Take me there" + stats row + ConfidencePill
+- App.tsx: GestureHandlerRootView at root; lot?: Lot in LotDetail nav params
 
-**Estimated MVP launch:** 5–7 weeks from Track 4.1 close.
+**Next critical-path work:** npx expo install (install new packages), test on device,
+then Gate D (Approach + Parked screens) or BestTime.app free-tier signup.
+
+**Estimated MVP launch:** 3–5 weeks from Gate C close.
