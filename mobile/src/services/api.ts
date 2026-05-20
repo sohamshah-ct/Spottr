@@ -40,6 +40,17 @@ export interface Lot {
   cars_detected?: number;
   sam2_stripes_found?: number;
   error?: string;
+  // Gate C additions
+  freshness_state?: 'A' | 'B' | 'C' | 'D';
+  freshness_label?: string;
+  bbox_source?: string;
+  place_lat?: number | null;
+  place_lng?: number | null;
+  besttime_venue_id?: string | null;
+  bbox_north?: number;
+  bbox_south?: number;
+  bbox_east?: number;
+  bbox_west?: number;
 }
 
 export interface LotsNearResponse {
@@ -81,10 +92,12 @@ export interface PlaceResult {
 }
 
 export const api = {
-  getLotsNear: (lat: number, lng: number, radius?: number, placeName?: string) => {
+  getLotsNear: (lat: number, lng: number, radius?: number, placeName?: string, placeId?: string, placeType?: string) => {
     const params = new URLSearchParams({ lat: String(lat), lng: String(lng) });
     if (radius != null) params.set('radius', String(radius));
     if (placeName) params.set('place_name', placeName);
+    if (placeId) params.set('place_id', placeId);
+    if (placeType) params.set('place_type', placeType);
     return apiFetch<LotsNearResponse>(`/api/lots/near?${params}`);
   },
 
