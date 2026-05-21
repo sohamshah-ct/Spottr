@@ -801,13 +801,13 @@ async function resolveNameFromPlaces(lot) {
         excludedTypes: ['parking'],
         maxResultCount: 1,
       }),
-      timeout: 5000,
+      timeout: 2000,  // 2-second hard cap — don't hold the /near response for a slow Places call
     });
     const data = await resp.json();
     const place = (data.places || [])[0];
     if (place?.displayName?.text) {
       const resolved = `${place.displayName.text} parking`;
-      // Cache back to DB so this resolution only happens once
+      // Cache back to DB (fire-and-forget) so this resolution only happens once per lot
       pool.query(
         "UPDATE lots SET name=$1 WHERE id=$2 AND (name IS NULL OR name ~* '^(parking lot|parking)$')",
         [resolved, lot.id],
@@ -921,19 +921,30 @@ router.get('/near', async (req, res) => {
       }
     }
 
-    // 3. For each lot, get detection (cached or fresh from Modal) + resolve name if missing
+    // 3. Detection + freshness — all lots in parallel (no external cap needed; Modal
+    //    already deduplicates in-flight requests via inFlightDetections map).
     const lotsWithDetections = await Promise.all(
       dbResult.rows.map(async (lot) => {
         const detection = await getOrDetect(lot);
         const freshness = await computeFreshness(lot, detection.detection_age_seconds ?? null);
-        // Bug G: resolve null/generic lot names via Places Nearby Search
-        let resolvedName = lot.name;
-        if (!resolvedName || GENERIC_NAME_RE.test(resolvedName.trim())) {
-          resolvedName = (await resolveNameFromPlaces(lot)) ?? lot.name;
-        }
-        return { ...lot, ...detection, name: resolvedName, freshness_state: freshness.state, freshness_label: freshness.label };
+        return { ...lot, ...detection, freshness_state: freshness.state, freshness_label: freshness.label };
       })
     );
+
+    // 4. Name resolution — synchronous in the response, capped at 5 concurrent
+    //    Places API calls so we stay well under quota on a cold-start with 10 unnamed lots.
+    //    Runs AFTER detection so detection latency and Places latency don't stack.
+    const NAMES_CAP = 5;
+    for (let i = 0; i < lotsWithDetections.length; i += NAMES_CAP) {
+      await Promise.all(
+        lotsWithDetections.slice(i, i + NAMES_CAP).map(async (lot) => {
+          if (!lot.name || GENERIC_NAME_RE.test(lot.name.trim())) {
+            const resolved = await resolveNameFromPlaces(lot);
+            if (resolved) lot.name = resolved;
+          }
+        })
+      );
+    }
 
     res.json({ lots: lotsWithDetections, count: lotsWithDetections.length });
   } catch (err) {
