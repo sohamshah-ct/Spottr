@@ -771,6 +771,58 @@ async function getOrDetect(lot) {
   return detection;
 }
 
+// ── Name resolution via Places Nearby Search ────────────────────────────────
+
+const PLACES_NEARBY_URL = 'https://places.googleapis.com/v1/places:searchNearby';
+const GOOGLE_PLACES_KEY = process.env.GOOGLE_PLACES_KEY || '';
+// Matches null-equivalent name strings so we know when to resolve
+const GENERIC_NAME_RE = /^(parking lot|parking|lot [a-f0-9-]{6,})$/i;
+
+// Returns a resolved display name for a lot with a null/generic name.
+// Uses Places Nearby Search (New API) to find the nearest named establishment
+// within 50m, then caches the result back to lots.name (fire-and-forget).
+async function resolveNameFromPlaces(lot) {
+  if (!GOOGLE_PLACES_KEY) return null;
+  try {
+    const resp = await fetch(PLACES_NEARBY_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': GOOGLE_PLACES_KEY,
+        'X-Goog-FieldMask': 'places.displayName',
+      },
+      body: JSON.stringify({
+        locationRestriction: {
+          circle: {
+            center: { latitude: lot.lat, longitude: lot.lng },
+            radius: 50.0,
+          },
+        },
+        excludedTypes: ['parking'],
+        maxResultCount: 1,
+      }),
+      timeout: 5000,
+    });
+    const data = await resp.json();
+    const place = (data.places || [])[0];
+    if (place?.displayName?.text) {
+      const resolved = `${place.displayName.text} parking`;
+      // Cache back to DB so this resolution only happens once
+      pool.query(
+        "UPDATE lots SET name=$1 WHERE id=$2 AND (name IS NULL OR name ~* '^(parking lot|parking)$')",
+        [resolved, lot.id],
+      ).catch(e => console.warn('[name-resolve] DB update failed:', e.message));
+      return resolved;
+    }
+  } catch (e) {
+    console.warn('[name-resolve] Places Nearby error:', e.message);
+  }
+  // Address-based fallback (no API cost)
+  if (lot.address) return `Parking near ${lot.address}`;
+  if (lot.city) return `Parking in ${lot.city}`;
+  return null;
+}
+
 // ── Routes ─────────────────────────────────────────────────────────────────
 
 // GET /api/lots/near — BEFORE /:id
@@ -869,12 +921,17 @@ router.get('/near', async (req, res) => {
       }
     }
 
-    // 3. For each lot, get detection (cached or fresh from Modal)
+    // 3. For each lot, get detection (cached or fresh from Modal) + resolve name if missing
     const lotsWithDetections = await Promise.all(
       dbResult.rows.map(async (lot) => {
         const detection = await getOrDetect(lot);
         const freshness = await computeFreshness(lot, detection.detection_age_seconds ?? null);
-        return { ...lot, ...detection, freshness_state: freshness.state, freshness_label: freshness.label };
+        // Bug G: resolve null/generic lot names via Places Nearby Search
+        let resolvedName = lot.name;
+        if (!resolvedName || GENERIC_NAME_RE.test(resolvedName.trim())) {
+          resolvedName = (await resolveNameFromPlaces(lot)) ?? lot.name;
+        }
+        return { ...lot, ...detection, name: resolvedName, freshness_state: freshness.state, freshness_label: freshness.label };
       })
     );
 
@@ -932,7 +989,13 @@ router.get('/:id', async (req, res) => {
   try {
     const lot = await db.getLotById(req.params.id);
     if (!lot) return res.status(404).json({ error: 'Lot not found' });
-    res.json(lot);
+    // Bug H: compute freshness from last_spot_detection so freshness_label is
+    // always present (no Modal invocation — reads cached timestamp only).
+    const detectionAgeSec = lot.last_spot_detection
+      ? Math.floor((Date.now() - new Date(lot.last_spot_detection)) / 1000)
+      : null;
+    const freshness = await computeFreshness(lot, detectionAgeSec);
+    res.json({ ...lot, freshness_state: freshness.state, freshness_label: freshness.label });
   } catch (err) {
     console.error('GET /lots/:id error:', err.message);
     res.status(500).json({ error: 'Internal server error' });
