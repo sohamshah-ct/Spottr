@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spottr — Design Specification</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<style>
+:root{--bg:#0A0A0A;--surface-1:#121212;--surface-2:#1A1A1A;--surface-3:#222;--border:rgba(255,255,255,.08);--border-strong:rgba(255,255,255,.16);--text-primary:#fff;--text-secondary:rgba(255,255,255,.65);--text-tertiary:rgba(255,255,255,.42);--text-quaternary:rgba(255,255,255,.28);--accent:#34D399;--accent-hover:#10B981;--accent-dim:rgba(52,211,153,.18);--accent-faint:rgba(52,211,153,.08);--font-sans:'DM Sans',system-ui,sans-serif;--font-mono:'DM Mono',ui-monospace,monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--text-primary);font-family:var(--font-sans);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.icon{width:1em;height:1em;display:inline-block;vertical-align:-.15em;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;fill:none;flex-shrink:0}
+.doc{max-width:1200px;margin:0 auto;padding:80px 40px 120px}
+.doc-header{border-bottom:.5px solid var(--border);padding-bottom:48px;margin-bottom:56px;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:24px}
+.doc-mark{display:flex;align-items:center;gap:16px}
+.doc-logo{width:56px;height:56px;border-radius:14px;background:var(--accent);display:flex;align-items:center;justify-content:center}
+.doc-logo svg{width:28px;height:28px}
+.doc-title{font-size:36px;font-weight:500;letter-spacing:-.02em;line-height:1;margin-bottom:6px}
+.doc-subtitle{font-family:var(--font-mono);font-size:12px;color:var(--text-tertiary);letter-spacing:.05em;text-transform:uppercase}
+.doc-meta{text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--text-tertiary);line-height:1.8}
+.doc-meta strong{color:var(--text-secondary);font-weight:400}
+.end-goal{background:linear-gradient(135deg,rgba(52,211,153,.06),rgba(52,211,153,.02));border:.5px solid var(--accent);border-radius:16px;padding:28px 32px;margin-bottom:80px;display:flex;gap:24px;align-items:center}
+.eg-g{width:48px;height:48px;border-radius:12px;background:var(--accent-dim);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--accent);font-size:24px}
+.eg-l{font-family:var(--font-mono);font-size:11px;color:var(--accent);letter-spacing:.12em;margin-bottom:6px}
+.eg-t{font-size:20px;font-weight:500;letter-spacing:-.01em;line-height:1.35}
+.eg-t span{color:var(--accent)}
+.section{margin-bottom:96px}
+.s-num{font-family:var(--font-mono);font-size:11px;color:var(--accent);letter-spacing:.12em;margin-bottom:12px}
+.s-title{font-size:28px;font-weight:500;letter-spacing:-.015em;margin-bottom:16px}
+.s-lede{font-size:16px;color:var(--text-secondary);max-width:720px;line-height:1.65;margin-bottom:40px}
+.philo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.philo{padding:28px;border:.5px solid var(--border);border-radius:16px;background:var(--surface-1)}
+.philo .pn{font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);margin-bottom:16px;letter-spacing:.08em}
+.philo .pt{font-size:18px;font-weight:500;margin-bottom:12px;letter-spacing:-.01em}
+.philo .pd{font-size:14px;color:var(--text-secondary);line-height:1.6}
+.tokens{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.sw{border-radius:12px;overflow:hidden;border:.5px solid var(--border);background:var(--surface-1)}
+.sw-c{height:88px}
+.sw-m{padding:14px 16px}
+.sw-n{font-size:13px;font-weight:500;margin-bottom:4px}
+.sw-h{font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary)}
+.types{display:flex;flex-direction:column;gap:24px;padding:32px;background:var(--surface-1);border:.5px solid var(--border);border-radius:16px}
+.tr{display:grid;grid-template-columns:200px 1fr;gap:32px;align-items:baseline;padding-bottom:20px;border-bottom:.5px solid var(--border)}
+.tr:last-child{border-bottom:0;padding-bottom:0}
+.tm{font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);line-height:1.6}
+.tm strong{color:var(--text-secondary);font-weight:400;display:block;margin-bottom:4px}
+.t-display{font-size:68px;font-weight:500;letter-spacing:-.03em;color:var(--accent);line-height:.9}
+.t-h1{font-size:28px;font-weight:500;letter-spacing:-.015em}
+.t-h2{font-size:22px;font-weight:500;letter-spacing:-.01em}
+.t-body{font-size:15px;font-weight:400}
+.t-small{font-size:13px;color:var(--text-secondary)}
+.t-mono{font-family:var(--font-mono);font-size:12px;color:var(--text-tertiary);letter-spacing:.04em}
+.comps{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.comp{padding:32px;background:var(--surface-1);border:.5px solid var(--border);border-radius:16px}
+.c-lbl{font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);margin-bottom:20px;letter-spacing:.06em}
+.c-stage{display:flex;flex-direction:column;gap:14px;padding:20px;background:var(--bg);border-radius:10px;border:.5px solid var(--border);margin-bottom:16px}
+.c-notes{font-size:13px;color:var(--text-secondary);line-height:1.6}
+.c-notes code,.s-lede code,.rm-desc code,.bi-desc code,.cd code{font-family:var(--font-mono);font-size:12px;color:var(--accent);background:var(--accent-faint);padding:1px 6px;border-radius:4px}
+.btn-p{background:var(--accent);color:var(--bg);font-family:var(--font-sans);font-size:15px;font-weight:500;padding:14px 18px;border-radius:14px;border:none;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}
+.btn-p .icon{font-size:18px}
+.btn-s{background:transparent;color:var(--text-primary);font-family:var(--font-sans);font-size:14px;padding:12px 18px;border-radius:12px;border:.5px solid var(--border-strong);cursor:pointer}
+.sb-demo{display:flex;align-items:center;gap:10px;background:var(--surface-2);border:.5px solid var(--border);border-radius:12px;padding:12px 14px}
+.sb-demo .icon{color:var(--text-tertiary);font-size:18px}
+.sb-demo span{color:var(--text-tertiary);font-size:14px}
+.lc-demo{display:flex;justify-content:space-between;align-items:flex-start;padding:12px 0;border-bottom:.5px solid var(--border)}
+.lc-n{font-size:14px;font-weight:500;margin-bottom:3px}
+.lc-su{font-size:12px;color:var(--text-tertiary)}
+.lc-c{font-size:16px;font-weight:500;color:var(--accent);text-align:right}
+.lc-f{font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);text-align:right;margin-top:2px}
+.fr-demo{display:flex;flex-direction:column;gap:12px}
+.fr-r{display:flex;justify-content:space-between;align-items:center;font-size:13px}
+.fr-s{font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);letter-spacing:.06em}
+.fr-t{color:var(--text-secondary)}
+.fr-t.live{color:var(--accent)}
+.voice{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.vc{padding:28px;background:var(--surface-1);border:.5px solid var(--border);border-radius:16px}
+.vl{font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);letter-spacing:.08em;margin-bottom:14px}
+.vp{display:flex;flex-direction:column;gap:6px;padding:14px 0;border-bottom:.5px solid var(--border)}
+.vp:last-child{border-bottom:0;padding-bottom:0}
+.vp:first-child{padding-top:0}
+.vy{font-size:14px;color:var(--text-primary)}
+.vy::before{content:'+';color:var(--accent);margin-right:10px;font-family:var(--font-mono)}
+.vn{font-size:13px;color:var(--text-tertiary)}
+.vn::before{content:'−';color:var(--text-quaternary);margin-right:10px;font-family:var(--font-mono)}
+.cmp-wrap{background:var(--surface-1);border:.5px solid var(--border);border-radius:16px;overflow:hidden}
+.cmp{width:100%;border-collapse:collapse;font-size:13px}
+.cmp th{font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);text-align:left;padding:16px 18px;border-bottom:.5px solid var(--border-strong);font-weight:400;letter-spacing:.06em}
+.cmp th.s-col{color:var(--accent)}
+.cmp td{padding:14px 18px;border-bottom:.5px solid var(--border);vertical-align:middle;color:var(--text-secondary);line-height:1.5}
+.cmp tr:last-child td{border-bottom:0}
+.cmp td:first-child{color:var(--text-primary);font-weight:500}
+.cmp td.s-col{color:var(--accent);background:var(--accent-faint)}
+.cmp .yes{color:var(--accent);font-weight:500}
+.cmp .no{color:var(--text-tertiary)}
+.cmp .partial{color:var(--text-secondary)}
+.scr-flow{display:flex;flex-direction:column;gap:80px}
+.scr-block{display:grid;grid-template-columns:360px 1fr;gap:64px;align-items:start}
+.scr-stage{display:flex;flex-direction:column;align-items:center;gap:16px}
+.phone{width:340px;height:700px;border-radius:40px;overflow:hidden;background:var(--bg);border:.5px solid var(--border);position:relative;box-shadow:0 0 0 6px var(--surface-1),0 0 0 6.5px var(--border)}
+.scr-lbl{font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);letter-spacing:.06em}
+.scr-info .scr-num{font-family:var(--font-mono);font-size:11px;color:var(--accent);letter-spacing:.12em;margin-bottom:8px}
+.scr-info .scr-name{font-size:24px;font-weight:500;letter-spacing:-.01em;margin-bottom:16px}
+.scr-info p{font-size:14px;color:var(--text-secondary);line-height:1.65;margin-bottom:20px}
+.scr-info p:last-child{margin-bottom:0}
+.ann{list-style:none;padding:0;margin:24px 0 0}
+.ann li{padding:14px 0;border-bottom:.5px solid var(--border);display:grid;grid-template-columns:90px 1fr;gap:16px;align-items:baseline;font-size:13px}
+.ann li:last-child{border-bottom:0}
+.ann-k{font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);letter-spacing:.06em}
+.ann-v{color:var(--text-secondary);line-height:1.55}
+.ann-v strong{color:var(--text-primary);font-weight:500}
+.sbar{height:44px;display:flex;align-items:center;justify-content:space-between;padding:14px 22px 0;font-size:14px;color:var(--text-primary);font-weight:500;position:relative;z-index:10}
+.sbar.on-map{background:linear-gradient(to bottom,rgba(10,10,10,.7),transparent)}
+.sbar .sbi{display:flex;gap:5px;align-items:center}
+.sbar .sbi .icon{font-size:13px}
+.notch{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:100px;height:28px;background:#000;border-radius:999px;z-index:11}
+.splash{display:flex;flex-direction:column;align-items:center;justify-content:center;height:calc(100% - 44px);padding:40px;text-align:center}
+.splash-logo{width:96px;height:96px;border-radius:24px;background:var(--accent);display:flex;align-items:center;justify-content:center;margin-bottom:32px}
+.splash-logo svg{width:48px;height:48px}
+.splash-name{font-size:38px;font-weight:700;letter-spacing:-.04em;margin-bottom:12px}
+.splash-tag{font-size:14px;color:var(--text-tertiary);letter-spacing:.02em;max-width:200px;margin-bottom:80px;line-height:1.5}
+.splash-hint{font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);letter-spacing:.08em}
+.onb{display:flex;flex-direction:column;height:calc(100% - 44px);padding:50px 32px 40px}
+.onb-promo{flex:1;display:flex;flex-direction:column;justify-content:center}
+.onb-g{width:64px;height:64px;border-radius:16px;background:var(--accent-dim);border:.5px solid var(--accent);display:flex;align-items:center;justify-content:center;margin-bottom:32px;color:var(--accent);font-size:28px}
+.onb-h{font-size:32px;font-weight:500;letter-spacing:-.02em;line-height:1.1;margin-bottom:16px}
+.onb-h span{color:var(--accent)}
+.onb-p{font-size:15px;color:var(--text-secondary);line-height:1.6;max-width:250px}
+.onb-cta{display:flex;flex-direction:column;gap:8px}
+.onb-dots{display:flex;gap:6px;justify-content:center;margin-bottom:20px}
+.onb-dot{width:6px;height:6px;border-radius:50%;background:var(--text-quaternary)}
+.onb-dot.active{background:var(--accent);width:18px;border-radius:3px}
+.onb-btn{background:var(--accent);color:var(--bg);font-weight:500;padding:16px;border-radius:14px;text-align:center}
+.perm{display:flex;flex-direction:column;height:calc(100% - 44px);padding:50px 32px 40px}
+.perm-gw{display:flex;justify-content:center;margin-bottom:36px;padding-top:30px}
+.perm-g{width:92px;height:92px;border-radius:50%;background:var(--accent-dim);display:flex;align-items:center;justify-content:center;position:relative;color:var(--accent);font-size:42px}
+.perm-g::after{content:'';position:absolute;inset:-8px;border:.5px solid var(--accent);border-radius:50%;opacity:.5}
+.perm-h{font-size:24px;font-weight:500;text-align:center;letter-spacing:-.01em;margin-bottom:12px}
+.perm-p{font-size:14px;color:var(--text-secondary);text-align:center;line-height:1.6;margin-bottom:40px;max-width:260px;align-self:center}
+.perm-bul{flex:1;padding:0 8px}
+.perm-b{display:flex;gap:12px;padding:12px 0;font-size:13px;color:var(--text-secondary);align-items:flex-start}
+.perm-b .icon{color:var(--accent);font-size:16px;margin-top:2px}
+.perm-btns{display:flex;flex-direction:column;gap:10px}
+.perm-sk{background:transparent;color:var(--text-tertiary);font-size:13px;padding:12px;text-align:center}
+.leaflet-map{width:100%;height:100%;background:#0F1714}
+.leaflet-container{background:#0F1714!important}
+.leaflet-control-attribution,.leaflet-control-zoom{display:none!important}
+.leaflet-tile{filter:brightness(.78) contrast(1.1) saturate(.85)}
+.mw{position:relative}
+.user-dot{position:absolute;width:14px;height:14px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);box-shadow:0 0 0 4px rgba(52,211,153,.22);z-index:500;pointer-events:none}
+.pin{position:absolute;width:28px;height:28px;border-radius:50% 50% 50% 0;background:var(--accent);transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;border:2px solid var(--bg);z-index:500;pointer-events:none}
+.pin.dim{background:var(--surface-3);border-color:rgba(255,255,255,.4)}
+.pin-l{transform:rotate(45deg);color:var(--bg);font-size:14px;font-weight:700;font-family:var(--font-sans);line-height:1}
+.pin.dim .pin-l{color:var(--text-secondary)}
+.pin-lbl{position:absolute;transform:translate(-50%,0);background:var(--bg);color:var(--text-primary);font-family:var(--font-mono);font-size:10px;padding:4px 9px;border-radius:4px;border:.5px solid var(--border-strong);white-space:nowrap;letter-spacing:.03em;z-index:500;pointer-events:none}
+.sht{position:absolute;left:0;right:0;bottom:0;background:var(--surface-1);border-top-left-radius:24px;border-top-right-radius:24px;padding:10px 20px 24px}
+.sht-h{width:36px;height:4px;background:rgba(255,255,255,.18);border-radius:2px;margin:0 auto 14px}
+.s-lab{font-size:11px;color:var(--text-tertiary);margin:16px 0 8px;letter-spacing:.06em;text-transform:lowercase;font-family:var(--font-mono)}
+.hom .mw{height:380px}
+.sea .mw{height:140px}
+.sea-sht{position:absolute;left:0;right:0;top:184px;bottom:0;background:var(--surface-1);border-top-left-radius:24px;border-top-right-radius:24px;padding:10px 20px 24px;display:flex;flex-direction:column}
+.sea-a{display:flex;align-items:center;gap:10px;background:var(--surface-2);border:.5px solid var(--accent);border-radius:12px;padding:12px 14px;margin-top:4px}
+.sea-a span.typed{color:var(--text-primary);font-size:14px}
+.sea-a span.cur{color:var(--accent);font-size:14px;margin-left:-4px;animation:blink 1s steps(1) infinite}
+.sea-a .icon{color:var(--accent);font-size:18px}
+@keyframes blink{50%{opacity:0}}
+.sea-r{display:flex;gap:12px;padding:14px 4px;border-bottom:.5px solid var(--border);cursor:pointer;align-items:flex-start}
+.sea-r .icon{color:var(--text-tertiary);font-size:18px;margin-top:2px}
+.sea-rn{font-size:14px;font-weight:500;margin-bottom:2px}
+.sea-ra{font-size:12px;color:var(--text-tertiary)}
+.sea-r.rec .icon{color:var(--text-quaternary)}
+.det .mw{height:200px}
+.det-sht{position:absolute;left:0;right:0;top:244px;bottom:0;background:var(--surface-1);border-top-left-radius:24px;border-top-right-radius:24px;padding:10px 22px 22px;display:flex;flex-direction:column}
+.det-hd{display:flex;justify-content:space-between;align-items:flex-start;margin-top:8px;gap:16px}
+.det-n{font-size:18px;font-weight:500;line-height:1.2;margin-bottom:4px}
+.det-a{font-size:12px;color:var(--text-tertiary);line-height:1.4}
+.det-d{font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);white-space:nowrap}
+.bn-b{display:flex;align-items:flex-end;gap:14px;margin:22px 0 6px}
+.bn{font-size:68px;color:var(--accent);font-weight:500;line-height:.9;letter-spacing:-.03em}
+.bl{font-size:14px;color:var(--text-secondary);padding-bottom:8px}
+.fresh{font-family:var(--font-mono);font-size:12px;color:var(--text-tertiary)}
+.zt{margin:18px 0;padding:10px;background:var(--surface-2);border-radius:12px;display:flex;align-items:center;gap:14px;cursor:pointer}
+.zt-i{width:80px;height:60px;border-radius:6px;flex-shrink:0;position:relative;overflow:hidden}
+.zt-o{position:absolute;top:14px;right:12px;width:36px;height:30px;border:1.5px solid var(--accent);background:rgba(52,211,153,.18);border-radius:2px;z-index:500}
+.zt-info{flex:1}
+.zt-t{font-size:13px;font-weight:500;margin-bottom:2px}
+.zt-s{font-size:11px;color:var(--text-tertiary);font-family:var(--font-mono)}
+.zt .icon{color:var(--text-tertiary);font-size:16px}
+.tk{margin-top:auto;background:var(--accent);color:var(--bg);font-size:16px;font-weight:500;padding:17px;border-radius:14px;text-align:center;display:flex;align-items:center;justify-content:center;gap:8px}
+.tk .icon{font-size:18px}
+.sec-ln{display:flex;justify-content:space-between;margin:14px 0 0;padding:14px 0 0;border-top:.5px solid var(--border);font-size:12px}
+.si .lbl{display:block;font-size:10px;color:var(--text-quaternary);margin-bottom:4px;letter-spacing:.06em;font-family:var(--font-mono)}
+.si .val{font-size:13px;color:var(--text-secondary);font-family:var(--font-mono)}
+.apr-hd{display:flex;justify-content:space-between;align-items:flex-start;padding:10px 18px 14px;border-bottom:.5px solid var(--border);background:var(--bg)}
+.apr-tg{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--accent);margin-top:3px;font-family:var(--font-mono);letter-spacing:.04em}
+.apr-d{width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.cb{background:rgba(255,255,255,.08);width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text-secondary);border:none;font-size:16px}
+.apr .mw{height:354px}
+.apr-ins{padding:20px 22px 24px;background:var(--surface-1);border-top:.5px solid var(--border)}
+.ins-p{font-size:22px;font-weight:500;margin-bottom:8px;line-height:1.25;letter-spacing:-.01em}
+.ins-m{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-secondary);font-family:var(--font-mono);margin-bottom:18px}
+.ins-m .sep{color:var(--text-quaternary)}
+.ins-m .cnt{color:var(--accent)}
+.pk{width:100%;background:transparent;color:var(--text-secondary);font-size:14px;padding:13px;border-radius:12px;text-align:center;border:.5px solid var(--border-strong);display:flex;align-items:center;justify-content:center;gap:8px}
+.pk .icon{font-size:16px}
+.prk{display:flex;flex-direction:column;height:calc(100% - 44px);padding:32px}
+.prk-t{padding-top:30px;display:flex;flex-direction:column;align-items:center}
+.prk-c{width:80px;height:80px;border-radius:50%;background:var(--accent-dim);border:.5px solid var(--accent);display:flex;align-items:center;justify-content:center;margin-bottom:28px;color:var(--accent);font-size:38px}
+.prk-h{font-size:24px;font-weight:500;margin-bottom:8px;letter-spacing:-.01em}
+.prk-s{font-size:14px;color:var(--text-secondary);text-align:center;line-height:1.5;max-width:240px}
+.prk-card{margin-top:36px;padding:18px;background:var(--surface-1);border:.5px solid var(--border);border-radius:14px;align-self:stretch}
+.pc-l{font-family:var(--font-mono);font-size:10px;color:var(--text-quaternary);letter-spacing:.06em;margin-bottom:6px}
+.pc-loc{font-size:14px;font-weight:500;margin-bottom:14px}
+.pc-m{display:flex;justify-content:space-between;gap:16px;font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);padding-top:14px;border-top:.5px solid var(--border)}
+.prk-b{margin-top:auto;display:flex;flex-direction:column;gap:10px}
+.prk-cta{background:var(--accent);color:var(--bg);font-weight:500;font-size:15px;padding:15px;border-radius:14px;text-align:center;display:flex;align-items:center;justify-content:center;gap:8px}
+.prk-cta .icon{font-size:16px}
+.prk-2{background:transparent;color:var(--text-secondary);font-size:14px;padding:13px;border-radius:12px;text-align:center;border:.5px solid var(--border-strong)}
+.rm{display:grid;grid-template-columns:200px 1fr;background:var(--surface-1);border:.5px solid var(--border);border-radius:16px;overflow:hidden}
+.rm-t{padding:24px 28px;border-right:.5px solid var(--border);border-bottom:.5px solid var(--border);display:flex;flex-direction:column;gap:8px}
+.rm-r.now .rm-t{background:var(--accent-faint)}
+.rm-c{padding:24px 28px;border-bottom:.5px solid var(--border)}
+.rm-r:last-child .rm-t,.rm-r:last-child .rm-c{border-bottom:0}
+.rm-r{display:contents}
+.rm-st{font-family:var(--font-mono);font-size:12px;color:var(--accent);letter-spacing:.06em}
+.rm-e{font-family:var(--font-mono);font-size:10px;color:var(--text-tertiary);letter-spacing:.04em}
+.rm-e.now{color:var(--accent)}
+.rm-ti{font-size:16px;font-weight:500;margin-bottom:8px}
+.rm-d{font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:12px}
+.rm-pr{font-family:var(--font-mono);font-size:11px;color:var(--accent);letter-spacing:.04em}
+.rm-g{font-family:var(--font-mono);font-size:10px;color:var(--text-tertiary);letter-spacing:.04em;margin-top:6px}
+.cons{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:32px}
+.con{padding:24px;border:.5px solid var(--border);background:var(--surface-1);border-radius:14px}
+.cn{font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);margin-bottom:12px;letter-spacing:.08em}
+.ct{font-size:15px;font-weight:500;margin-bottom:8px}
+.cd{font-size:13px;color:var(--text-secondary);line-height:1.55}
+.beh{width:100%;border-collapse:collapse;font-size:13px}
+.beh th{font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);text-align:left;padding:14px 16px;border-bottom:.5px solid var(--border-strong);font-weight:400;letter-spacing:.06em}
+.beh td{padding:14px 16px;border-bottom:.5px solid var(--border);vertical-align:top;color:var(--text-secondary);line-height:1.55}
+.beh td:first-child{color:var(--text-primary);font-weight:500;white-space:nowrap}
+.beh td code{font-family:var(--font-mono);font-size:12px;color:var(--accent);background:var(--accent-faint);padding:1px 6px;border-radius:4px}
+.beh-w{background:var(--surface-1);border:.5px solid var(--border);border-radius:16px;overflow:hidden}
+.bld{display:flex;flex-direction:column;gap:12px}
+.bi{display:grid;grid-template-columns:56px 1fr 120px;gap:20px;align-items:center;padding:20px 24px;background:var(--surface-1);border:.5px solid var(--border);border-radius:12px}
+.bi-n{font-family:var(--font-mono);font-size:13px;color:var(--accent)}
+.bi-t{font-size:15px;font-weight:500;margin-bottom:4px}
+.bi-d{font-size:13px;color:var(--text-secondary);line-height:1.5}
+.bi-e{font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);text-align:right;letter-spacing:.04em}
+.foot{border-top:.5px solid var(--border);padding-top:40px;margin-top:96px;display:flex;justify-content:space-between;align-items:center;font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);letter-spacing:.04em}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(52,211,153,.55)}70%{box-shadow:0 0 0 12px rgba(52,211,153,0)}100%{box-shadow:0 0 0 0 rgba(52,211,153,0)}}
+.pls{animation:pulse 2s infinite}
+@media(max-width:960px){.doc{padding:40px 20px 80px}.philo-grid,.comps,.cons,.voice{grid-template-columns:1fr}.tokens{grid-template-columns:repeat(2,1fr)}.scr-block{grid-template-columns:1fr;gap:32px}.scr-stage{align-items:flex-start}.tr{grid-template-columns:1fr;gap:12px}.rm{grid-template-columns:1fr}.rm-t{border-right:0}.cmp{font-size:12px}.cmp th,.cmp td{padding:10px 12px}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+<symbol id="i-mp" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></symbol>
+<symbol id="i-ch" viewBox="0 0 24 24"><path d="M5 12l5 5l10 -10"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+<symbol id="i-cl" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+<symbol id="i-nv" viewBox="0 0 24 24"><path d="m3 11 18-8-8 18-2-7-8-3z"/></symbol>
+<symbol id="i-cr" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+<symbol id="i-cx" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><line x1="3" y1="12" x2="9" y2="12"/><line x1="15" y1="12" x2="21" y2="12"/><line x1="12" y1="3" x2="12" y2="9"/><line x1="12" y1="15" x2="12" y2="21"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-sat" viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 1 10 10"/><path d="M12 6a6 6 0 0 1 6 6"/><circle cx="6" cy="18" r="3"/><path d="M8 16l4-4"/></symbol>
+<symbol id="i-pk" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 17V7h4a3 3 0 0 1 0 6H9"/></symbol>
+<symbol id="i-sg" viewBox="0 0 24 24"><path d="M2 12a14 14 0 0 1 20 0"/><path d="M5 15a10 10 0 0 1 14 0"/><path d="M8 18a6 6 0 0 1 8 0"/><circle cx="12" cy="21" r="0.5" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-bt" viewBox="0 0 24 24"><rect x="2" y="7" width="18" height="10" rx="2"/><rect x="4" y="9" width="13" height="6" fill="currentColor" stroke="none"/><line x1="22" y1="11" x2="22" y2="13"/></symbol>
+<symbol id="i-wf" viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="0.5" fill="currentColor" stroke="none"/></symbol>
+</defs></svg>
+
+<div class="doc">
+
+<div class="doc-header">
+  <div class="doc-mark">
+    <div class="doc-logo"><svg viewBox="0 0 32 32" fill="none"><path d="M16 4 L26 12 L16 28 L6 12 Z" fill="#0A0A0A"/><circle cx="16" cy="13" r="3.5" fill="#0A0A0A"/></svg></div>
+    <div><h1 class="doc-title">Spottr</h1><p class="doc-subtitle">Design specification</p></div>
+  </div>
+  <div class="doc-meta"><div><strong>Author</strong> Soham Shah</div><div><strong>Updated</strong> May 18, 2026</div><div><strong>Status</strong> Implementation-ready</div></div>
+</div>
+
+<div class="end-goal">
+  <div class="eg-g"><svg class="icon"><use href="#i-cx"/></svg></div>
+  <div><div class="eg-l">END GOAL</div><div class="eg-t">Spottr tells you <span>which specific spot is open</span> and routes you to it. Today's MVP is the foundation for that promise. Every architectural decision in this document is in service of getting there.</div></div>
+</div>
+
+<section class="section">
+<div class="s-num">01 · PHILOSOPHY</div>
+<h2 class="s-title">Why this looks the way it does</h2>
+<p class="s-lede">Spottr is a utility tool, not an entertainment app. The aesthetic earns its keep by being honest, fast, and out of the way. Three commitments drive every visual decision.</p>
+<div class="philo-grid">
+<div class="philo"><div class="pn">01</div><div class="pt">Dark-first surface</div><div class="pd">OLED-black is the canonical view. Reduces driver distraction at night, preserves battery, gives the accent maximum visual weight. Light mode is a courtesy, not a parallel design.</div></div>
+<div class="philo"><div class="pn">02</div><div class="pt">Single accent discipline</div><div class="pd">One color carries meaning across the entire app: a fresh observation, an open spot, a confirmed action. Multiple accents would dilute the signal. The user learns one rule and trusts it everywhere.</div></div>
+<div class="philo"><div class="pn">03</div><div class="pt">Honest by sentence</div><div class="pd">Freshness is communicated through plain language, not colored pills. "3 min ago" and "typical for now" tell the truth about confidence without asking the user to learn a state machine.</div></div>
+</div>
+</section>
+
+<section class="section">
+<div class="s-num">02 · COLOR TOKENS</div>
+<h2 class="s-title">The palette is short on purpose</h2>
+<p class="s-lede">Six surfaces, one accent. Every color in the app is one of these values, used consistently. Mapped to React Native theme tokens for direct implementation.</p>
+<div class="tokens">
+<div class="sw"><div class="sw-c" style="background:#0A0A0A"></div><div class="sw-m"><div class="sw-n">Background</div><div class="sw-h">#0A0A0A · bg</div></div></div>
+<div class="sw"><div class="sw-c" style="background:#121212"></div><div class="sw-m"><div class="sw-n">Surface 1</div><div class="sw-h">#121212 · sheets, cards</div></div></div>
+<div class="sw"><div class="sw-c" style="background:#1A1A1A"></div><div class="sw-m"><div class="sw-n">Surface 2</div><div class="sw-h">#1A1A1A · inputs</div></div></div>
+<div class="sw"><div class="sw-c" style="background:#222"></div><div class="sw-m"><div class="sw-n">Surface 3</div><div class="sw-h">#222 · raised</div></div></div>
+<div class="sw"><div class="sw-c" style="background:#34D399"></div><div class="sw-m"><div class="sw-n">Accent</div><div class="sw-h">#34D399 · the green</div></div></div>
+<div class="sw"><div class="sw-c" style="background:#10B981"></div><div class="sw-m"><div class="sw-n">Accent hover</div><div class="sw-h">#10B981 · pressed</div></div></div>
+<div class="sw"><div class="sw-c" style="background:rgba(52,211,153,.18);border:.5px solid #34D399"></div><div class="sw-m"><div class="sw-n">Accent dim</div><div class="sw-h">18% alpha · backgrounds</div></div></div>
+<div class="sw"><div class="sw-c" style="background:rgba(52,211,153,.08)"></div><div class="sw-m"><div class="sw-n">Accent faint</div><div class="sw-h">8% alpha · highlights</div></div></div>
+</div>
+<p style="margin-top:24px;font-size:13px;color:var(--text-tertiary);font-family:var(--font-mono)">Text colors use white at 100 / 65 / 42 / 28% alpha for primary / secondary / tertiary / quaternary. Accent is Tailwind emerald-400.</p>
+</section>
+
+<section class="section">
+<div class="s-num">03 · TYPOGRAPHY</div>
+<h2 class="s-title">Two faces, four sizes that matter</h2>
+<p class="s-lede">DM Sans for everything users read. DM Mono for technical labels where alignment carries meaning. Two weights total: regular and medium. No bold except the wordmark.</p>
+<div class="types">
+<div class="tr"><div class="tm"><strong>Display</strong>DM Sans 500<br>68px / -3% / 0.9 line</div><div class="t-display">247</div></div>
+<div class="tr"><div class="tm"><strong>H1 / lot name</strong>DM Sans 500<br>28px / -1.5%</div><div class="t-h1">Costco Wholesale</div></div>
+<div class="tr"><div class="tm"><strong>H2 / instruction</strong>DM Sans 500<br>22px / -1%</div><div class="t-h2">Head right, bear toward the front row</div></div>
+<div class="tr"><div class="tm"><strong>Body</strong>DM Sans 400<br>15px / 0% / 1.5 line</div><div class="t-body">Spottr tells you which spot is open before you arrive, then routes you to it.</div></div>
+<div class="tr"><div class="tm"><strong>Small</strong>DM Sans 400<br>13px / 65% alpha</div><div class="t-small">1220 Tamarack Ave South Windsor · 0.4 mi</div></div>
+<div class="tr"><div class="tm"><strong>Mono / technical</strong>DM Mono 400<br>12px / 4% letter / 42% alpha</div><div class="t-mono">SCANNED 3 MIN AGO · 41.8179° N, 72.5563° W</div></div>
+</div>
+</section>
+
+<section class="section">
+<div class="s-num">04 · COMPONENTS</div>
+<h2 class="s-title">The building blocks</h2>
+<p class="s-lede">Four primitives compose every screen. Build these once, use them everywhere.</p>
+<div class="comps">
+<div class="comp">
+<div class="c-lbl">PRIMARY BUTTON</div>
+<div class="c-stage"><button class="btn-p"><svg class="icon"><use href="#i-nv"/></svg>Take me there</button><button class="btn-s">Maybe later</button></div>
+<div class="c-notes">Primary uses <code>accent</code> background with <code>bg</code> text. Secondary uses transparent with <code>border-strong</code>. Both 14px radius.</div>
+</div>
+<div class="comp">
+<div class="c-lbl">SEARCH BAR</div>
+<div class="c-stage"><div class="sb-demo"><svg class="icon"><use href="#i-search"/></svg><span>where are you going?</span></div></div>
+<div class="c-notes">Resting state uses <code>surface-2</code>. Active state (focused) adds 0.5px <code>accent</code> border and shifts placeholder to a blinking cursor. Always lowercase placeholder.</div>
+</div>
+<div class="comp">
+<div class="c-lbl">LOT CARD</div>
+<div class="c-stage"><div class="lc-demo"><div><div class="lc-n">Costco Wholesale</div><div class="lc-su">1220 Tamarack Ave · 0.4 mi</div></div><div><div class="lc-c">247 open</div><div class="lc-f">3 min ago</div></div></div></div>
+<div class="c-notes">Lot name + sub on the left, count + freshness on the right. Count uses <code>accent</code> when fresh, white when capacity-only. Freshness always in mono.</div>
+</div>
+<div class="comp">
+<div class="c-lbl">FRESHNESS LABEL</div>
+<div class="c-stage"><div class="fr-demo">
+<div class="fr-r"><span class="fr-s">A · LIVE</span><span class="fr-t live">3 min ago</span></div>
+<div class="fr-r"><span class="fr-s">B · FORECAST</span><span class="fr-t">typical for now</span></div>
+<div class="fr-r"><span class="fr-s">C · RECENT</span><span class="fr-t">scanned 47 min ago</span></div>
+<div class="fr-r"><span class="fr-s">D · STRUCTURAL</span><span class="fr-t">capacity only</span></div>
+</div></div>
+<div class="c-notes">Four internal states, one sentence each. Backend returns <code>freshness_label</code> as a pre-formatted string. State A gets <code>accent</code> color; others stay neutral.</div>
+</div>
+</div>
+</section>
+
+<section class="section">
+<div class="s-num">05 · VOICE & COPY</div>
+<h2 class="s-title">How Spottr talks</h2>
+<p class="s-lede">No mascot. The personality lives in the words. Four principles, each one a small commitment that adds up to a tool that feels honest and confident instead of friendly and salesy.</p>
+<div class="voice">
+<div class="vc">
+<div class="vl">HONEST OVER ENTHUSIASTIC</div>
+<div class="vp"><div class="vy">Typical for now</div><div class="vn">Looks busy! Better hurry!</div></div>
+<div class="vp"><div class="vy">Scanned 47 min ago</div><div class="vn">Recently updated!</div></div>
+<div class="vp"><div class="vy">Capacity only</div><div class="vn">~50% likely full</div></div>
+</div>
+<div class="vc">
+<div class="vl">SPECIFIC OVER GENERIC</div>
+<div class="vp"><div class="vy">Front row, right of center</div><div class="vn">Your saved spot</div></div>
+<div class="vp"><div class="vy">Head right, bear toward the front row</div><div class="vn">Continue to your destination</div></div>
+<div class="vp"><div class="vy">Open spots cluster here</div><div class="vn">Best parking area</div></div>
+</div>
+<div class="vc">
+<div class="vl">QUIET OVER LOUD</div>
+<div class="vp"><div class="vy">I parked</div><div class="vn">SAVE MY PARKING SPOT</div></div>
+<div class="vp"><div class="vy">Find my car</div><div class="vn">Take me back to my vehicle!</div></div>
+<div class="vp"><div class="vy">Take me there</div><div class="vn">Get directions now →</div></div>
+</div>
+<div class="vc">
+<div class="vl">LOWERCASE WHERE INTERFACE</div>
+<div class="vp"><div class="vy">where are you going?</div><div class="vn">Where Are You Going?</div></div>
+<div class="vp"><div class="vy">recent</div><div class="vn">Recent Searches</div></div>
+<div class="vp"><div class="vy">suggestions</div><div class="vn">Suggestions</div></div>
+</div>
+</div>
+<p style="margin-top:32px;font-size:13px;color:var(--text-tertiary);font-family:var(--font-mono);max-width:720px;line-height:1.7">Additional rules. No exclamation points anywhere in the app. No emoji in interface copy. Numbers rounded to meaningful precision (247, not 247.34). Time relative when fresh ("3 min ago"), absolute when persistent ("Parked 9:48 AM"). Sentence case for body, lowercase for interface chrome, all-caps only in mono technical labels.</p>
+</section>
+
+<section class="section">
+<div class="s-num">06 · WHY SPOTTR IS DIFFERENT</div>
+<h2 class="s-title">Spottr versus everyone else</h2>
+<p class="s-lede">Every parking app today either rents you reserved spots (SpotHero, ParkMobile) or shows you a static "P" icon (Google, Apple). None of them tell you what's actually open right now in the lots you'd already drive to. This is the gap Spottr fills.</p>
+<div class="cmp-wrap"><table class="cmp">
+<thead><tr><th>CAPABILITY</th><th class="s-col">SPOTTR</th><th>SpotHero</th><th>ParkMobile</th><th>Google Maps</th></tr></thead>
+<tbody>
+<tr><td>Real-time occupancy in any lot</td><td class="s-col yes">yes</td><td class="no">no</td><td class="no">no</td><td class="no">no</td></tr>
+<tr><td>Works in unaffiliated lots</td><td class="s-col yes">yes</td><td class="no">no</td><td class="no">no</td><td class="partial">P icon only</td></tr>
+<tr><td>In-lot navigation to open spots</td><td class="s-col yes">yes</td><td class="no">no</td><td class="no">no</td><td class="no">no</td></tr>
+<tr><td>No reservation required</td><td class="s-col yes">yes</td><td class="no">reservation only</td><td class="no">reservation only</td><td class="yes">yes</td></tr>
+<tr><td>Coverage method</td><td class="s-col">satellite CV + partner data + crowdsourcing</td><td>partnered lots only</td><td>partnered street/garage</td><td>static metadata</td></tr>
+<tr><td>Honest freshness signal</td><td class="s-col yes">timestamp on every count</td><td class="no">no</td><td class="no">no</td><td class="no">no</td></tr>
+<tr><td>Works globally on day one</td><td class="s-col yes">yes</td><td class="no">~400 cities</td><td class="no">~600 cities</td><td class="yes">global</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="section">
+<div class="s-num">07 · SCREENS</div>
+<h2 class="s-title">Every screen the user sees</h2>
+<p class="s-lede">Eight screens, ordered as the user encounters them. Each map uses real Esri World Imagery satellite tiles — the actual aerial view of Costco South Windsor and surrounding areas. Production uses Mapbox dark-style; the visual treatment is identical.</p>
+
+<div class="scr-flow">
+
+<div class="scr-block">
+<div class="scr-stage">
+<div class="phone">
+<div class="notch"></div>
+<div class="sbar"><span>9:41</span><div class="sbi"><svg class="icon"><use href="#i-sg"/></svg><svg class="icon"><use href="#i-wf"/></svg><svg class="icon"><use href="#i-bt"/></svg></div></div>
+<div class="splash">
+<div class="splash-logo"><svg viewBox="0 0 32 32" fill="none"><path d="M16 4 L26 12 L16 28 L6 12 Z" fill="#0A0A0A"/><circle cx="16" cy="13" r="3.5" fill="#0A0A0A"/></svg></div>
+<div class="splash-name">Spottr</div>
+<div class="splash-tag">Find parking before you arrive</div>
+<div class="splash-hint">TAP TO BEGIN</div>
+</div>
+</div>
+<div class="scr-lbl">SplashScreen.tsx</div>
+</div>
+<div class="scr-info">
+<div class="scr-num">SCREEN 01</div>
+<h3 class="scr-name">Splash</h3>
+<p>The first thing the user sees. Logo, name, one-line tagline, soft prompt. No marketing copy, no login. Tap anywhere to continue. Dismisses automatically after 1.2s.</p>
+<p>Fast screen. Exists to establish identity, not take time.</p>
+<ul class="ann">
+<li><span class="ann-k">LOGO</span><span class="ann-v"><strong>96 × 96, radius 24.</strong> Pin-and-dot mark on accent green. Same symbol as the app icon.</span></li>
+<li><span class="ann-k">WORDMARK</span><span class="ann-v"><strong>38px / 700 / -4% letter spacing.</strong> Only place the bold weight appears.</span></li>
+<li><span class="ann-k">TAG</span><span class="ann-v">Single line, tertiary text. No subtitle stack.</span></li>
+<li><span class="ann-k">HINT</span><span class="ann-v">Mono, all-caps, low opacity.</span></li>
+</ul>
+</div>
+</div>
+
+<div class="scr-block">
+<div class="scr-stage">
+<div class="phone">
+<div class="notch"></div>
+<div class="sbar"><span>9:41</span><div class="sbi"><svg class="icon"><use href="#i-sg"/></svg><svg class="icon"><use href="#i-wf"/></svg><svg class="icon"><use href="#i-bt"/></svg></div></div>
+<div class="onb">
+<div class="onb-promo">
+<div class="onb-g"><svg class="icon"><use href="#i-sat"/></svg></div>
+<div class="onb-h">Spots, <span>seen from above</span></div>
+<div class="onb-p">Spottr uses satellite imagery to count open spots in any lot before you arrive. Then we route you to the closest entrance.</div>
+</div>
+<div class="onb-cta">
+<div class="onb-dots"><div class="onb-dot active"></div><div class="onb-dot"></div><div class="onb-dot"></div></div>
+<div class="onb-btn">Continue</div>
+</div>
+</div>
+</div>
+<div class="scr-lbl">OnboardingScreen.tsx</div>
+</div>
+<div class="scr-info">
+<div class="scr-num">SCREEN 02</div>
+<h3 class="scr-name">Onboarding</h3>
+<p>Three slides. Each slide does one job: what Spottr does, how it knows, what to expect. No questions, no signup. Skip is always available.</p>
+<p>The only place the app explains itself in marketing tone. After this, pure utility. Resist the urge to add a fourth slide.</p>
+<ul class="ann">
+<li><span class="ann-k">GLYPH</span><span class="ann-v"><strong>64 × 64, accent-dim background.</strong> Outline icon at 28px, accent-tinted. Different per slide.</span></li>
+<li><span class="ann-k">HEADING</span><span class="ann-v"><strong>32px / 500.</strong> Two lines max. Accent-color span on the emphatic noun.</span></li>
+<li><span class="ann-k">BODY</span><span class="ann-v">15px secondary. ~25 words max. No bullet lists.</span></li>
+<li><span class="ann-k">DOTS</span><span class="ann-v">Active dot stretches to a 18px pill. Inactive stay 6 × 6 circles.</span></li>
+</ul>
+</div>
+</div>
+
+<div class="scr-block">
+<div class="scr-stage">
+<div class="phone">
+<div class="notch"></div>
+<div class="sbar"><span>9:42</span><div class="sbi"><svg class="icon"><use href="#i-sg"/></svg><svg class="icon"><use href="#i-wf"/></svg><svg class="icon"><use href="#i-bt"/></svg></div></div>
+<div class="perm">
+<div class="perm-gw"><div class="perm-g"><svg class="icon"><use href="#i-mp"/></svg></div></div>
+<div class="perm-h">Spottr needs your location</div>
+<div class="perm-p">To show parking near you and route you to the right entrance.</div>
+<div class="perm-bul">
+<div class="perm-b"><svg class="icon"><use href="#i-ch"/></svg><span>We never share your location with third parties</span></div>
+<div class="perm-b"><svg class="icon"><use href="#i-ch"/></svg><span>You can revoke access any time in settings</span></div>
+<div class="perm-b"><svg class="icon"><use href="#i-ch"/></svg><span>Background access lets Spottr guide you inside the lot</span></div>
+</div>
+<div class="perm-btns"><div class="onb-btn">Allow location</div><div class="perm-sk">Not now</div></div>
+</div>
+</div>
+<div class="scr-lbl">PermissionsScreen.tsx</div>
+</div>
+<div class="scr-info">
+<div class="scr-num">SCREEN 03</div>
+<h3 class="scr-name">Permissions</h3>
+<p>One screen, one permission. Location only at launch. Notifications deferred until first park event. Background location requested at the moment of first navigation to a lot.</p>
+<p>The bullets address the three concerns the user has when they see a location prompt: privacy, control, why background.</p>
+<ul class="ann">
+<li><span class="ann-k">GLYPH</span><span class="ann-v"><strong>92 × 92 circle, double ring.</strong> Echoes a GPS pulse.</span></li>
+<li><span class="ann-k">BULLETS</span><span class="ann-v">Three concerns, three answers. Outline check icon in accent.</span></li>
+<li><span class="ann-k">CTA</span><span class="ann-v">Primary = allow. Secondary text-only = not now.</span></li>
+</ul>
+</div>
+</div>
+
+<div class="scr-block">
+<div class="scr-stage">
+<div class="phone hom">
+<div class="notch"></div>
+<div class="sbar on-map"><span>9:41</span><div class="sbi"><svg class="icon"><use href="#i-sg"/></svg><svg class="icon"><use href="#i-wf"/></svg><svg class="icon"><use href="#i-bt"/></svg></div></div>
+<div class="mw" style="margin-top:-44px">
+<div id="m-home" class="leaflet-map"></div>
+<div class="user-dot pls" style="left:50%;top:50%;transform:translate(-50%,-50%)"></div>
+<div class="pin" style="left:245px;top:95px"><span class="pin-l">P</span></div>
+<div class="pin-lbl" style="left:258px;top:130px">COSTCO · 247</div>
+<div class="pin dim" style="left:70px;top:260px"><span class="pin-l">P</span></div>
+<div class="pin dim" style="left:220px;top:300px"><span class="pin-l">P</span></div>
+</div>
+<div class="sht">
+<div class="sht-h"></div>
+<div class="sb-demo"><svg class="icon"><use href="#i-search"/></svg><span>where are you going?</span></div>
+<div class="s-lab">recent</div>
+<div class="lc-demo"><div><div class="lc-n">Costco Wholesale</div><div class="lc-su">1220 Tamarack Ave · 0.4 mi</div></div><div><div class="lc-c">247 open</div><div class="lc-f">3 min ago</div></div></div>
+<div class="lc-demo"><div><div class="lc-n">Henkel Corporation</div><div class="lc-su">One Henkel Way · 1.2 mi</div></div><div><div class="lc-c">82 open</div><div class="lc-f">typical for now</div></div></div>
+<div class="lc-demo" style="border-bottom:0"><div><div class="lc-n">Evergreen Walk</div><div class="lc-su">501 Evergreen Way · 2.1 mi</div></div><div><div class="lc-c" style="color:var(--text-primary)">~640 spaces</div><div class="lc-f">capacity only</div></div></div>
+</div>
+</div>
+<div class="scr-lbl">HomeScreen.tsx</div>
+</div>
+<div class="scr-info">
+<div class="scr-num">SCREEN 04</div>
+<h3 class="scr-name">Home</h3>
+<p>The screen the user spends 90% of their time on. Real satellite tile fills the surface — actual Manchester / South Windsor area. Bottom sheet starts at search-bar height and drags up to reveal more history. No tab bar, no bottom navigation.</p>
+<p>Three recent lots, three different freshness states visible on this one screen — and the user understands each without learning a color code.</p>
+<ul class="ann">
+<li><span class="ann-k">MAP</span><span class="ann-v"><strong>Mapbox dark-style satellite in production.</strong> Centered on user GPS, zoom 14–16. Stale-while-revalidate.</span></li>
+<li><span class="ann-k">PINS</span><span class="ann-v">Lit accent for fresh lots. Dim gray for capacity-only.</span></li>
+<li><span class="ann-k">SHEET</span><span class="ann-v">React Native Bottom Sheet, snap points at 30% / 60% / 95%.</span></li>
+<li><span class="ann-k">RECENT</span><span class="ann-v">Last 3 searched lots. Hidden on first launch (no awkward empty state).</span></li>
+</ul>
+</div>
+</div>
+
+<div class="scr-block">
+<div class="scr-stage">
+<div class="phone sea">
+<div class="notch"></div>
+<div class="sbar on-map"><span>9:41</span><div class="sbi"><svg class="icon"><use href="#i-sg"/></svg><svg class="icon"><use href="#i-wf"/></svg><svg class="icon"><use href="#i-bt"/></svg></div></div>
+<div class="mw" style="margin-top:-44px"><div id="m-search" class="leaflet-map"></div><div class="user-dot pls" style="left:50%;top:50%;transform:translate(-50%,-50%)"></div></div>
+<div class="sea-sht">
+<div class="sht-h"></div>
+<div class="sea-a"><svg class="icon"><use href="#i-search"/></svg><span class="typed">cos</span><span class="cur">|</span></div>
+<div class="s-lab">suggestions</div>
+<div class="sea-r"><svg class="icon"><use href="#i-mp"/></svg><div><div class="sea-rn">Costco Wholesale</div><div class="sea-ra">1220 Tamarack Ave, South Windsor</div></div></div>
+<div class="sea-r"><svg class="icon"><use href="#i-mp"/></svg><div><div class="sea-rn">Costco Wholesale</div><div class="sea-ra">99 Brainard Rd, Hartford</div></div></div>
+<div class="sea-r rec"><svg class="icon"><use href="#i-cl"/></svg><div><div class="sea-rn">Costco Gas Station</div><div class="sea-ra">1220 Tamarack Ave · last week</div></div></div>
+<div class="sea-r"><svg class="icon"><use href="#i-mp"/></svg><div><div class="sea-rn">Costco Optical</div><div class="sea-ra">99 Brainard Rd, Hartford</div></div></div>
+</div>
+</div>
+<div class="scr-lbl">SearchScreen.tsx</div>
+</div>
+<div class="scr-info">
+<div class="scr-num">SCREEN 05</div>
+<h3 class="scr-name">Search active</h3>
+<p>Tap the search bar; sheet animates to ~75% height, map shrinks to a strip, keyboard appears, Google Places autocomplete streams in. Three characters is usually enough.</p>
+<p>Recent searches show a clock icon, fresh searches show a pin icon. Tapping a result transitions to lot detail with a shared-element animation on the pin.</p>
+<ul class="ann">
+<li><span class="ann-k">INPUT</span><span class="ann-v"><strong>Focused state.</strong> Border shifts to 0.5px accent. Cursor blinks at 1 Hz in accent.</span></li>
+<li><span class="ann-k">RESULTS</span><span class="ann-v">Google Places autocomplete, biased to user location, 250ms debounce.</span></li>
+<li><span class="ann-k">RECENT</span><span class="ann-v">Mixed inline with Places results, distinguished by clock icon.</span></li>
+<li><span class="ann-k">TAP</span><span class="ann-v">Closes keyboard, hands off to LotDetail. Sheet retains snap height.</span></li>
+</ul>
+</div>
+</div>
+
+<div class="scr-block">
+<div class="scr-stage">
+<div class="phone det">
+<div class="notch"></div>
+<div class="sbar on-map"><span>9:42</span><div class="sbi"><svg class="icon"><use href="#i-sg"/></svg><svg class="icon"><use href="#i-wf"/></svg><svg class="icon"><use href="#i-bt"/></svg></div></div>
+<div class="mw" style="margin-top:-44px"><div id="m-detail" class="leaflet-map"></div><div class="pin" style="left:50%;top:50%;transform:translate(-50%,-50%)"><span class="pin-l">P</span></div></div>
+<div class="det-sht">
+<div class="sht-h"></div>
+<div class="det-hd"><div><div class="det-n">Costco Wholesale</div><div class="det-a">1220 Tamarack Ave, South Windsor</div></div><span class="det-d">0.4 mi</span></div>
+<div class="bn-b"><div class="bn">247</div><div class="bl">spots open</div></div>
+<div class="fresh">scanned 3 min ago</div>
+<div class="zt">
+<div class="zt-i" id="zt-map"><div class="zt-o"></div></div>
+<div class="zt-info"><div class="zt-t">Open spots cluster here</div><div class="zt-s">front-right · near entrance</div></div>
+<svg class="icon"><use href="#i-cr"/></svg>
+</div>
+<button class="tk"><svg class="icon"><use href="#i-nv"/></svg>Take me there</button>
+<div class="sec-ln">
+<div class="si"><span class="lbl">CAPACITY</span><span class="val">412</span></div>
+<div class="si"><span class="lbl">% FULL</span><span class="val">40%</span></div>
+<div class="si"><span class="lbl">TYPICAL</span><span class="val">88%</span></div>
+</div>
+</div>
+</div>
+<div class="scr-lbl">LotDetailScreen.tsx</div>
+</div>
+<div class="scr-info">
+<div class="scr-num">SCREEN 06</div>
+<h3 class="scr-name">Lot detail</h3>
+<p>The moment of truth. Real satellite tile at top. Big confident number is the entire reading hierarchy. Below it, the freshness sentence in mono. The zone thumbnail shows where in the lot the open spots cluster, rendered from the same imagery the user just saw above.</p>
+<p>"Take me there" opens system maps routed to the best entrance for the open zone — not the building's street address.</p>
+<ul class="ann">
+<li><span class="ann-k">BIG NUMBER</span><span class="ann-v"><strong>68px / 500 / -3% / accent.</strong> Animates on refresh. The unit of attention.</span></li>
+<li><span class="ann-k">FRESHNESS</span><span class="ann-v">Mono 12px. Backend returns formatted string; mobile renders raw.</span></li>
+<li><span class="ann-k">ZONE THUMB</span><span class="ann-v"><strong>80 × 60.</strong> Real satellite crop of the lot, accent-outlined zone overlay.</span></li>
+<li><span class="ann-k">CTA</span><span class="ann-v">"Take me there" opens system maps. Destination = best-entrance coord, not building.</span></li>
+<li><span class="ann-k">SECONDARY</span><span class="ann-v">Capacity / current % / typical %. BestTime forecast surfaced as context.</span></li>
+</ul>
+</div>
+</div>
+
+<div class="scr-block">
+<div class="scr-stage">
+<div class="phone apr">
+<div class="notch"></div>
+<div class="sbar"><span>9:43</span><div class="sbi"><svg class="icon"><use href="#i-sg"/></svg><svg class="icon"><use href="#i-wf"/></svg><svg class="icon"><use href="#i-bt"/></svg></div></div>
+<div class="apr-hd"><div><div class="det-n">Costco Wholesale</div><span class="apr-tg"><span class="apr-d pls"></span>APPROACHING · 60 FT</span></div><button class="cb"><svg class="icon"><use href="#i-x"/></svg></button></div>
+<div class="mw" style="position:relative">
+<div id="m-approach" class="leaflet-map"></div>
+<svg viewBox="0 0 340 354" width="340" height="354" style="position:absolute;top:0;left:0;pointer-events:none;z-index:400">
+<defs><marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#34D399"/></marker></defs>
+<rect x="180" y="80" width="120" height="60" fill="rgba(52,211,153,.18)" stroke="#34D399" stroke-width="2" rx="4"/>
+<text x="240" y="76" text-anchor="middle" fill="#34D399" font-size="11" font-weight="500" font-family="DM Mono" letter-spacing="0.08em">12 OPEN</text>
+<path d="M 50 290 Q 130 290 180 200 T 240 130" stroke="#34D399" stroke-width="2.5" stroke-dasharray="6 4" fill="none" stroke-linecap="round" marker-end="url(#arr)" opacity="0.9"/>
+</svg>
+<div class="user-dot pls" style="left:50px;top:290px"></div>
+</div>
+<div class="apr-ins">
+<div class="ins-p">Head right, bear toward the front row</div>
+<div class="ins-m"><span class="cnt">12 open</span><span class="sep">·</span><span>30 seconds away</span></div>
+<button class="pk"><svg class="icon"><use href="#i-pk"/></svg>I parked</button>
+</div>
+</div>
+<div class="scr-lbl">ApproachScreen.tsx</div>
+</div>
+<div class="scr-info">
+<div class="scr-num">SCREEN 07</div>
+<h3 class="scr-name">Approach view</h3>
+<p>The screen that doesn't exist in any other parking app. Fires automatically when GPS detects the user has crossed the lot polygon. Apple Maps says "you have arrived"; Spottr takes over with this.</p>
+<p>Live satellite tile of the actual Costco lot. User's pulsing dot enters at the bottom-left. Best zone outlined in accent with its open count. An animated dashed path traces the recommended route.</p>
+<p>One short instruction the driver can read at a glance. No turn-by-turn voice; lots are too small. The visual works at lot speed.</p>
+<ul class="ann">
+<li><span class="ann-k">TRIGGER</span><span class="ann-v">Geofence check against lot polygon. Fires within 50ms of crossing. Haptic tap on entry.</span></li>
+<li><span class="ann-k">SATELLITE</span><span class="ann-v">Real Mapbox satellite tile at zoom 19. Cached per-lot.</span></li>
+<li><span class="ann-k">DOT</span><span class="ann-v">Live GPS-driven. Updates at 1 Hz. Pulses on accent.</span></li>
+<li><span class="ann-k">PATH</span><span class="ann-v">Server-computed from entry point to zone centroid via OSM aisles.</span></li>
+<li><span class="ann-k">INSTRUCTION</span><span class="ann-v">Server-generated short sentence. Template: [direction], [landmark cue]. Max 8 words.</span></li>
+<li><span class="ann-k">I PARKED</span><span class="ann-v">Crowdsourcing hook. Sends location + timestamp. Optional.</span></li>
+</ul>
+</div>
+</div>
+
+<div class="scr-block">
+<div class="scr-stage">
+<div class="phone">
+<div class="notch"></div>
+<div class="sbar"><span>9:48</span><div class="sbi"><svg class="icon"><use href="#i-sg"/></svg><svg class="icon"><use href="#i-wf"/></svg><svg class="icon"><use href="#i-bt"/></svg></div></div>
+<div class="prk">
+<div class="prk-t">
+<div class="prk-c"><svg class="icon"><use href="#i-ch"/></svg></div>
+<div class="prk-h">Parked at Costco</div>
+<div class="prk-s">Spottr saved your spot. We'll guide you back when you're ready.</div>
+<div class="prk-card">
+<div class="pc-l">YOUR SPOT</div>
+<div class="pc-loc">Front row, right of center</div>
+<div class="pc-m"><span>41.8179° N</span><span>72.5563° W</span><span>9:48 AM</span></div>
+</div>
+</div>
+<div class="prk-b"><div class="prk-cta"><svg class="icon"><use href="#i-nv"/></svg>Find my car</div><div class="prk-2">Done parking</div></div>
+</div>
+</div>
+<div class="scr-lbl">ParkedScreen.tsx</div>
+</div>
+<div class="scr-info">
+<div class="scr-num">SCREEN 08</div>
+<h3 class="scr-name">Parked</h3>
+<p>The user tapped "I parked" from the approach screen. Spottr captured their lat/lng + timestamp, generated a human-readable description, saved it. When they return to the app, this is the screen.</p>
+<p>"Find my car" opens system maps routed to the saved coordinate — like Apple Maps' parked-car feature but with human-readable context Spottr can generate.</p>
+<ul class="ann">
+<li><span class="ann-k">CHECK</span><span class="ann-v">80 × 80 accent-dim circle, 0.5px accent border. Outline check icon.</span></li>
+<li><span class="ann-k">CARD</span><span class="ann-v">Lat/lng in mono. Human-readable location generated from the zone the user parked in.</span></li>
+<li><span class="ann-k">FIND MY CAR</span><span class="ann-v">Primary CTA. Opens system maps with walking directions.</span></li>
+<li><span class="ann-k">PERSISTS</span><span class="ann-v">Default app launch state until "Done parking" or motion sustained > 15 mph for 5 min.</span></li>
+</ul>
+</div>
+</div>
+
+</div>
+</section>
+
+<section class="section">
+<div class="s-num">08 · THE END GOAL</div>
+<h2 class="s-title">The path to specific-spot routing</h2>
+<p class="s-lede">Spottr's end-state promise is "spot 14 is open, take me to it." Today's MVP delivers zone-level routing — the cluster of open spots and a visual approach guide. This section explains the gap, the technical constraints behind it, and the architecture that closes it over time.</p>
+
+<h3 style="font-size:18px;font-weight:500;margin-bottom:20px;margin-top:40px">The three constraints between today and spot-level</h3>
+<div class="cons">
+<div class="con"><div class="cn">CONSTRAINT 01</div><div class="ct">Satellite resolution</div><div class="cd">Mapbox satellite tiles at maximum zoom resolve to <code>~30cm/pixel</code>. A car overhead is 16×6 pixels — enough to detect "occupied or not," not enough for sub-stall certainty. Higher-resolution providers cost orders of magnitude more.</div></div>
+<div class="con"><div class="cn">CONSTRAINT 02</div><div class="ct">Map routing snap</div><div class="cd">Apple Maps and Google Maps both refuse to route to coordinates inside a parking lot — they snap to the nearest drivable road. Pass them the lat/lng of Spot A-14 and they route to the lot entrance instead.</div></div>
+<div class="con"><div class="cn">CONSTRAINT 03</div><div class="ct">GPS error</div><div class="cd">Consumer GPS accuracy is <code>5–10 meters</code> in good conditions. A parking stall is 2.7 meters wide. Even with perfect knowledge of the right stall, the phone can't tell the user which of three adjacent stalls is correct without an additional signal.</div></div>
+</div>
+
+<h3 style="font-size:18px;font-weight:500;margin-bottom:20px;margin-top:48px">The layered architecture that closes the gap</h3>
+<p style="font-size:14px;color:var(--text-secondary);margin-bottom:24px;max-width:720px">Each layer adds a data source. Each tightens the precision Spottr can promise. The MVP ships on Layer 1 today; BestTime layers on within weeks; everything else is a planned upgrade with a concrete vendor and cost profile.</p>
+
+<div class="rm">
+<div class="rm-r now"><div class="rm-t"><div class="rm-st">MVP · LAYER 1</div><div class="rm-e now">SHIPS IN 2–3 WEEKS</div></div><div class="rm-c"><div class="rm-ti">Satellite CV — zone-level</div><div class="rm-d">Modal-deployed YOLO + SAM2 on Mapbox tiles. Detects occupancy per stall, aggregates into zones. User sees the zone where open spots cluster, gets routed to the closest entrance, then in-lot visual guidance via the approach screen.</div><div class="rm-pr">PRECISION → "head to this part of the lot"</div><div class="rm-g">GATED ON · mobile rebuild (in progress)</div></div></div>
+<div class="rm-r"><div class="rm-t"><div class="rm-st">V6 · LAYER 2</div><div class="rm-e">~1 WEEK POST-MVP</div></div><div class="rm-c"><div class="rm-ti">BestTime integration</div><div class="rm-d">API access already in hand. Backend hits <code>/forecasts</code> and <code>/forecasts/live</code> per lot; maps response to State A/B/C/D classifier; surfaces live busyness for Costco-class big-box retail. State A timestamp badge becomes real for covered venues.</div><div class="rm-pr">PRECISION → "zone-level with minute-fresh confidence"</div><div class="rm-g">GATED ON · 2–3 days of backend integration</div></div></div>
+<div class="rm-r"><div class="rm-t"><div class="rm-st">V6.5 · LAYER 2.5</div><div class="rm-e">1–3 MONTHS</div></div><div class="rm-c"><div class="rm-ti">Parkopedia partnership</div><div class="rm-d">Partnered garage occupancy data covering tens of thousands of paid garages globally. Requires sales contract negotiation. Closes the structured-garage coverage gap BestTime doesn't address.</div><div class="rm-pr">PRECISION → "live counts at every covered garage"</div><div class="rm-g">GATED ON · partnership conversation</div></div></div>
+<div class="rm-r"><div class="rm-t"><div class="rm-st">V7-A · LAYER 3</div><div class="rm-e">6–12 MONTHS</div></div><div class="rm-c"><div class="rm-ti">Connected-vehicle telemetry</div><div class="rm-d">Wejo, INRIX, or HERE license. Real-time data from millions of cars' ultrasonic sensors as they drive past parked vehicles. Surface lots without sensor coverage get minute-fresh occupancy.</div><div class="rm-pr">PRECISION → "row-level with directional certainty"</div><div class="rm-g">GATED ON · capital, not engineering</div></div></div>
+<div class="rm-r"><div class="rm-t"><div class="rm-st">V7-B · LAYER 4</div><div class="rm-e">DAY 1 → COMPOUNDS</div></div><div class="rm-c"><div class="rm-ti">User crowdsourcing aggregation</div><div class="rm-d">Capability ships with MVP — every "I parked" event + every "I'm leaving" detected via Bluetooth disconnect feeds the model. Value emerges as user base grows. At 10,000 users per market, individual-stall occupancy becomes probabilistic-but-actionable.</div><div class="rm-pr">PRECISION → tightens as the user base grows</div><div class="rm-g">GATED ON · user growth, not engineering</div></div></div>
+<div class="rm-r"><div class="rm-t"><div class="rm-st">V7-C · LAYER 5</div><div class="rm-e">6–12 MONTHS</div></div><div class="rm-c"><div class="rm-ti">Owned ground cameras at flagship lots</div><div class="rm-d">Partnership-deployed cameras at the 50–200 highest-value lots (Costco South Windsor, Henkel Stamford as pilots). Lot operator pays install; Spottr gets exclusive data access. True real-time spot-level for flagship venues.</div><div class="rm-pr">PRECISION → "Spot 14 is open, take me there"</div><div class="rm-g">GATED ON · partnership conversations</div></div></div>
+</div>
+
+<h3 style="font-size:18px;font-weight:500;margin-bottom:16px;margin-top:48px">Why the UI doesn't change as the data tightens</h3>
+<p style="font-size:14px;color:var(--text-secondary);max-width:760px;line-height:1.7">The interaction model is locked. The big number on the lot detail screen always says how many spots are open. The Take Me There button always opens system maps. The Approach screen always shows where to head once you arrive. What changes between Layer 1 and Layer 5 is what "where to head" means — a zone today, a row in V6.5, a specific stall in V7-C. The user learns Spottr once at MVP and grows into the precision as the architecture catches up. No app redesign. No "Spottr Pro." Just a product that gets quietly more precise.</p>
+</section>
+
+<section class="section">
+<div class="s-num">09 · BEHAVIOR</div>
+<h2 class="s-title">State machine and transitions</h2>
+<p class="s-lede">The state machine governs which screen appears when. Most transitions are automatic — the app decides what the user needs based on GPS, time of day, and recent activity.</p>
+<div class="beh-w"><table class="beh">
+<thead><tr><th>FROM</th><th>EVENT</th><th>TO</th><th>NOTES</th></tr></thead>
+<tbody>
+<tr><td>Cold launch</td><td>App opened, no prior session</td><td><code>Splash</code></td><td>1.2s timeout or tap. Then onboarding if first launch, else home.</td></tr>
+<tr><td>Splash</td><td>First launch detected</td><td><code>Onboarding</code></td><td>Three slides. Skip available throughout.</td></tr>
+<tr><td>Onboarding</td><td>Slide 3 continue</td><td><code>Permissions</code></td><td>Location only. Notifications deferred to first park event.</td></tr>
+<tr><td>Permissions</td><td>Location granted or skipped</td><td><code>Home</code></td><td>Map centers on user if granted, else on default region.</td></tr>
+<tr><td>Home</td><td>Search bar tapped</td><td><code>Search</code></td><td>Sheet expands to 75%. Keyboard auto-focuses.</td></tr>
+<tr><td>Search</td><td>Result tapped</td><td><code>LotDetail</code></td><td>Shared element transition on the pin.</td></tr>
+<tr><td>LotDetail</td><td>Take me there tapped</td><td>System Maps</td><td>Destination = best-entrance coord. Spottr backgrounds, awaits geofence.</td></tr>
+<tr><td>Background</td><td>GPS crosses lot polygon</td><td><code>Approach</code></td><td>Foregrounds app, haptic tap, fires approach screen automatically.</td></tr>
+<tr><td>Approach</td><td>I parked tapped</td><td><code>Parked</code></td><td>Saves coordinate + timestamp. Sends to backend for crowdsourcing.</td></tr>
+<tr><td>Approach</td><td>X dismissed</td><td><code>Home</code></td><td>User decided not to use Spottr for this trip.</td></tr>
+<tr><td>Parked</td><td>Find my car tapped</td><td>System Maps</td><td>Walking directions to saved coordinate.</td></tr>
+<tr><td>Parked</td><td>Done parking tapped</td><td><code>Home</code></td><td>Clears parked state.</td></tr>
+<tr><td>Parked</td><td>GPS shows user driving away</td><td><code>Home</code></td><td>Auto-clears after 5 min of motion exceeding 15 mph.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="section">
+<div class="s-num">10 · API CONTRACT</div>
+<h2 class="s-title">What each screen needs from the backend</h2>
+<p class="s-lede">Every screen has a clear data contract. Backend returns pre-formatted strings where the mobile client would otherwise have to know business rules — freshness labels, zone descriptions, approach instructions.</p>
+<div class="beh-w"><table class="beh">
+<thead><tr><th>SCREEN</th><th>ENDPOINT</th><th>RETURNS</th></tr></thead>
+<tbody>
+<tr><td>Home</td><td><code>GET /api/lots/recent</code></td><td>Array of <code>{lot_id, name, address, distance_mi, count, count_label, freshness_label, freshness_state}</code>. Last 3 searched in recency order.</td></tr>
+<tr><td>Search</td><td><code>GET /api/lots/search?q=</code></td><td>Google Places-backed autocomplete + Spottr's known-lot enrichment. Returns <code>{place_id, name, address, lat, lng, has_data}</code>.</td></tr>
+<tr><td>LotDetail</td><td><code>GET /api/lots/:id</code></td><td>Full lot record: count, freshness, capacity, current %, typical %, zone thumbnail tile URL, best entrance coord, BestTime payload.</td></tr>
+<tr><td>Approach</td><td><code>GET /api/lots/:id/approach</code></td><td>Satellite tile URL, GPS entry point, zone centroid, animated path geometry, instruction string. Generated server-side.</td></tr>
+<tr><td>Parked</td><td><code>POST /api/lots/:id/parked</code></td><td>Saves <code>{user_id, lot_id, lat, lng, timestamp, zone_id}</code>. Returns <code>{human_readable_location, save_id}</code>.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="section">
+<div class="s-num">11 · BUILD ORDER</div>
+<h2 class="s-title">Sequence Claude Code should follow</h2>
+<p class="s-lede">Build screens in dependency order. Foundation first, then onboarding cluster, then the core loop, then the differentiating in-lot experience. Each block ends with a visual check before moving on. Total estimated MVP time: ~10 working days of focused implementation.</p>
+<div class="bld">
+<div class="bi"><div class="bi-n">01</div><div><div class="bi-t">Foundation (theme, fonts, navigator)</div><div class="bi-d">Replace theme.ts with token table from section 02. Load DM Sans + DM Mono. Set up navigator with all 8 routes registered.</div></div><div class="bi-e">~4 hours</div></div>
+<div class="bi"><div class="bi-n">02</div><div><div class="bi-t">Splash + Onboarding + Permissions</div><div class="bi-d">Three static screens. Hardest part is the onboarding slide transitions and the glyph styling. No backend dependency.</div></div><div class="bi-e">~1 day</div></div>
+<div class="bi"><div class="bi-n">03</div><div><div class="bi-t">Home (Mapbox satellite + bottom sheet)</div><div class="bi-d">Mapbox dark-style satellite, React Native Bottom Sheet at 30/60/95% snap points, lot card list. Wire to <code>GET /api/lots/recent</code>.</div></div><div class="bi-e">~1.5 days</div></div>
+<div class="bi"><div class="bi-n">04</div><div><div class="bi-t">Search active</div><div class="bi-d">Sheet expansion animation, Google Places autocomplete, debounced search, shared element transition to LotDetail.</div></div><div class="bi-e">~1 day</div></div>
+<div class="bi"><div class="bi-n">05</div><div><div class="bi-t">Lot detail</div><div class="bi-d">Big number block, freshness label, zone thumbnail (real satellite crop), Take Me There handoff to system maps with best-entrance coord.</div></div><div class="bi-e">~1.5 days</div></div>
+<div class="bi"><div class="bi-n">06</div><div><div class="bi-t">Approach view (the differentiator)</div><div class="bi-d">Geofence handler in background task. Mapbox satellite at zoom 19. Live GPS dot. Animated path. Instruction text. Haptic feedback. The screen that wins the user.</div></div><div class="bi-e">~2 days</div></div>
+<div class="bi"><div class="bi-n">07</div><div><div class="bi-t">Parked + auto-clear</div><div class="bi-d">Save coordinate + timestamp. Auto-clear logic from motion detection. Find My Car deep link.</div></div><div class="bi-e">~1 day</div></div>
+<div class="bi"><div class="bi-n">08</div><div><div class="bi-t">Polish pass + BestTime integration</div><div class="bi-d">All animations, haptic feedback, micro-interactions. End-to-end QA. Wire BestTime into freshness classifier.</div></div><div class="bi-e">~1 day</div></div>
+</div>
+</section>
+
+<div class="foot"><span>SPOTTR DESIGN SPEC · IMPLEMENTATION-READY</span><span>SOHAM SHAH · MAY 18, 2026</span></div>
+
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+var COSTCO=[41.81795,-72.55633],HOME=[41.81,-72.555];
+var ESRI='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+var NI={zoomControl:false,attributionControl:false,dragging:false,touchZoom:false,doubleClickZoom:false,scrollWheelZoom:false,boxZoom:false,keyboard:false};
+function mnt(id,c,z){var e=document.getElementById(id);if(!e)return;var m=L.map(id,Object.assign({},NI,{center:c,zoom:z}));L.tileLayer(ESRI,{maxZoom:19}).addTo(m);setTimeout(function(){m.invalidateSize()},100);return m}
+mnt('m-home',HOME,14);mnt('m-search',HOME,14);mnt('m-detail',COSTCO,17);mnt('m-approach',COSTCO,19);mnt('zt-map',COSTCO,19);
+</script>
+</body>
+</html>
