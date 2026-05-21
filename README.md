@@ -46,6 +46,41 @@ with sub-5% error against a manual ground-truth count.
 
 ---
 
+## In Action
+
+### CV Pipeline — satellite → detected spaces
+
+**Step 1 · Satellite tile input (z19, ~36 m ground coverage)**
+
+![Satellite input tile](diagnostics/final_HLP_43_553.jpg)
+
+*Highland Park Market, Manchester CT — z19 Mapbox/Maxar tile. Individual cars and painted stripes are visible at this zoom level. Up to 25 tiles (5×5 grid) are fetched per lot and stitched before running YOLOv8.*
+
+---
+
+**Step 2 · SAM2 segmentation — all raw masks**
+
+![SAM2 raw masks](diagnostics/2_all_masks.png)
+
+*All segment classes returned by SAM2 before filtering: `mat` (asphalt), `stripe` (white lane markings), `large_bldg`, `small_background`, `noise`. ~436 raw segments at this tile. The colour-coded legend is printed to the debug image at inference time.*
+
+---
+
+**Step 3 · Area filter — rejecting non-parking segments**
+
+![Area rejection step](diagnostics/3_area_rejected.png)
+
+*Left: masks rejected by area (too large > 2 000 px² = building/lot-wide, or too small < 50 px² = noise). Right: satellite tile with remaining candidate parking-space segments. Only segments passing both area bounds and class filter (`stripe` or `mat`) proceed to occupancy classification.*
+
+---
+
+### Mobile App
+
+> Device screenshots will be added here after first TestFlight build.
+> Screens: Home (map + lot list) · Search (Places autocomplete) · Lot Detail (AI Map + open count + zone rows) · Driving (dwell detection) · Parked (Find My Car)
+
+---
+
 ## How It Works
 
 ### 1. Lot geometry
