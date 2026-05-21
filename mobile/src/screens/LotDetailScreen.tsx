@@ -2,18 +2,21 @@
  * LotDetailScreen.tsx — Gate C rebuild
  *
  * Layout:
- *   - MapView (190px) zoomed to lot bbox + Mapbox satellite + space markers
- *   - Sheet overlaid covering the bottom portion
+ *   - MapView fills the full screen (behind the sheet)
+ *   - Live Sat toggle: absolute, top-right, above sheet, zIndex 20
+ *   - Animated bottom sheet (Animated.Value + PanResponder, no native deps)
+ *     snaps between SNAP_LOW (40% visible) and SNAP_HIGH (92% visible)
  *   - Sheet: name/address + BigNumberCount + FreshnessLabel + ZoneThumbnail
- *            + "Take me there" CTA + stats row
+ *            + all zone rows + "Take me there" CTA + stats row + ConfidencePill
  *
  * Spec: spottr-finalframe.html SCREEN 06
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   ActivityIndicator, Platform, Linking, RefreshControl,
+  Animated, PanResponder, Dimensions,
 } from 'react-native';
 import MapView, { Marker, UrlTile, Circle } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,7 +34,18 @@ import type { RootStackParamList } from '../../App';
 
 const MAPBOX_TOKEN = (process.env as any).EXPO_PUBLIC_MAPBOX_TOKEN ?? '';
 const MAPBOX_TILE_URL = `https://api.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}@2x.jpg90?access_token=${MAPBOX_TOKEN}`;
-const MAP_HEIGHT = 190;
+
+const { height: SCREEN_H } = Dimensions.get('window');
+// Snap positions: translateY = distance from screen top to sheet top
+const SNAP_LOW  = SCREEN_H * 0.60; // collapsed — 40% of screen visible
+const SNAP_HIGH = SCREEN_H * 0.08; // expanded  — 92% of screen visible
+const SNAPS     = [SNAP_LOW, SNAP_HIGH];
+
+function nearestSnap(y: number): number {
+  return SNAPS.reduce((prev, curr) =>
+    Math.abs(curr - y) < Math.abs(prev - y) ? curr : prev
+  );
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -75,16 +89,55 @@ export default function LotDetailScreen({ route, navigation }: Props) {
 
   const [lot, setLot] = useState<Lot | null>(routeLot ?? null);
   const [rowsData, setRowsData] = useState<RowsResponse | null>(null);
+  // loading: full-screen spinner only when we have no lot data at all
   const [loading, setLoading] = useState(!routeLot);
   const [refreshing, setRefreshing] = useState(false);
   const [showMarkers, setShowMarkers] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [slowLoad, setSlowLoad] = useState(false);
 
+  // ── Animated sheet ──────────────────────────────────────────────────────────
+  const translateY = useRef(new Animated.Value(SNAP_LOW)).current;
+  const lastY = useRef(SNAP_LOW);
+
+  const snapTo = useCallback((y: number) => {
+    lastY.current = y;
+    Animated.spring(translateY, {
+      toValue: y,
+      useNativeDriver: true,
+      tension: 68,
+      friction: 12,
+    }).start();
+  }, [translateY]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dy) > 5,
+      onPanResponderGrant: () => {
+        translateY.stopAnimation(v => { lastY.current = v; });
+        (translateY as any).setOffset(lastY.current);
+        (translateY as any).setValue(0);
+      },
+      onPanResponderMove: Animated.event([null, { dy: translateY }], { useNativeDriver: false }),
+      onPanResponderRelease: (_, g) => {
+        (translateY as any).flattenOffset();
+        const rawY = lastY.current + g.dy;
+        const clampedY = Math.max(SNAP_HIGH, Math.min(SNAP_LOW, rawY));
+        const snap = g.vy > 0.5 ? SNAP_LOW : g.vy < -0.5 ? SNAP_HIGH : nearestSnap(clampedY);
+        snapTo(snap);
+      },
+    })
+  ).current;
+
+  // ── Data loading ────────────────────────────────────────────────────────────
+
   const load = useCallback(async (isRefresh = false) => {
+    // Full-screen spinner only when we have no lot data yet; never on refreshes or
+    // background row fetches (which just update counts inside the already-rendered sheet).
+    const needsFullSpinner = !lot && !isRefresh;
     let slowTimer: ReturnType<typeof setTimeout> | null = null;
     try {
-      if (!isRefresh) {
+      if (needsFullSpinner) {
         setLoading(true);
         slowTimer = setTimeout(() => setSlowLoad(true), 30000);
       }
@@ -161,61 +214,62 @@ export default function LotDetailScreen({ route, navigation }: Props) {
 
   return (
     <View style={styles.root}>
-      {/* ── Map container (190px) — toggle lives inside to stay above sheet ── */}
-      <View style={styles.mapContainer}>
-        <MapView
-          style={styles.map}
-          region={mapRegion}
-          showsUserLocation={false}
-          showsMyLocationButton={false}
-          showsCompass={false}
-          rotateEnabled={false}
-          scrollEnabled={false}
-          zoomEnabled={false}
-          pitchEnabled={false}
-        >
-          {!!MAPBOX_TOKEN && (
-            <UrlTile urlTemplate={MAPBOX_TILE_URL} maximumZ={19} flipY={false} tileSize={256} />
-          )}
-          {/* Centre pin */}
-          <Marker coordinate={{ latitude: displayLot.lat, longitude: displayLot.lng }} anchor={{ x: 0.5, y: 1 }}>
-            <View style={styles.centerPin}>
-              <Text style={styles.centerPinText}>P</Text>
-            </View>
-          </Marker>
-          {/* AI Map: space dots when showMarkers is true */}
-          {showMarkers && allSpaces.map((sp, i) => (
-            <Circle
-              key={i}
-              center={{ latitude: sp.lat, longitude: sp.lng }}
-              radius={1.2}
-              strokeColor={sp.occupied ? colors.full : colors.a}
-              fillColor={sp.occupied ? colors.full : colors.a}
-              strokeWidth={0}
-            />
-          ))}
-        </MapView>
+      {/* ── Map — fills full screen behind sheet ──────────────────────────── */}
+      <MapView
+        style={StyleSheet.absoluteFillObject}
+        region={mapRegion}
+        showsUserLocation={false}
+        showsMyLocationButton={false}
+        showsCompass={false}
+        rotateEnabled={false}
+        scrollEnabled={false}
+        zoomEnabled={false}
+        pitchEnabled={false}
+      >
+        {!!MAPBOX_TOKEN && (
+          <UrlTile urlTemplate={MAPBOX_TILE_URL} maximumZ={19} flipY={false} tileSize={256} />
+        )}
+        <Marker coordinate={{ latitude: displayLot.lat, longitude: displayLot.lng }} anchor={{ x: 0.5, y: 1 }}>
+          <View style={styles.centerPin}>
+            <Text style={styles.centerPinText}>P</Text>
+          </View>
+        </Marker>
+        {showMarkers && allSpaces.map((sp, i) => (
+          <Circle
+            key={i}
+            center={{ latitude: sp.lat, longitude: sp.lng }}
+            radius={1.2}
+            strokeColor={sp.occupied ? colors.full : colors.a}
+            fillColor={sp.occupied ? colors.full : colors.a}
+            strokeWidth={0}
+          />
+        ))}
+      </MapView>
 
-        {/* Live Sat toggle — inside map container so it stays above the sheet */}
-        <TouchableOpacity
-          style={styles.satToggle}
-          onPress={() => setShowMarkers(v => !v)}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.satToggleText, showMarkers && styles.satToggleActive]}>
-            Live Sat
-          </Text>
-        </TouchableOpacity>
-      </View>
+      {/* ── Live Sat toggle — sibling above sheet, high zIndex ────────────── */}
+      <TouchableOpacity
+        style={[styles.satToggle, { top: insets.top + 10 }]}
+        onPress={() => setShowMarkers(v => !v)}
+        activeOpacity={0.8}
+      >
+        <Text style={[styles.satToggleText, !showMarkers && styles.satToggleInactive]}>
+          {showMarkers ? 'AI Map' : 'Live Sat'}
+        </Text>
+      </TouchableOpacity>
 
-      {/* ── Detail sheet ─────────────────────────────────────────────────── */}
-      <View style={[styles.sheet, { paddingBottom: insets.bottom + 12 }]}>
-        {/* Handle */}
+      {/* ── Animated bottom sheet ─────────────────────────────────────────── */}
+      <Animated.View
+        style={[styles.sheet, { transform: [{ translateY }], paddingBottom: insets.bottom + 12 }]}
+        {...panResponder.panHandlers}
+      >
+        {/* Handle — visual cue that sheet is draggable */}
         <View style={styles.handle} />
 
         <ScrollView
           contentContainerStyle={styles.sheetContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          scrollEventThrottle={16}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.a} />
           }
@@ -239,7 +293,7 @@ export default function LotDetailScreen({ route, navigation }: Props) {
           {/* ── Freshness (.fr) ───────────────────────────────────────── */}
           <FreshnessLabel label={freshLabel} style={styles.fr} />
 
-          {/* ── Zone thumbnail (best zone) + remaining zones ──────────── */}
+          {/* ── Best zone thumbnail + remaining zones ─────────────────── */}
           {rows.length > 0 && <ZoneThumbnail rows={rows} />}
           {rows.length > 1 && (
             [...rows]
@@ -278,7 +332,7 @@ export default function LotDetailScreen({ route, navigation }: Props) {
           {/* ── Confidence pill ───────────────────────────────────────── */}
           <ConfidencePill bboxSource={displayLot.bbox_source} />
         </ScrollView>
-      </View>
+      </Animated.View>
     </View>
   );
 }
@@ -331,17 +385,7 @@ const styles = StyleSheet.create({
     color: colors.a,
   },
 
-  // Map container — explicit height so toggle is positioned within it, not behind the sheet
-  mapContainer: {
-    height: MAP_HEIGHT,
-    width: '100%',
-  },
-  map: {
-    height: MAP_HEIGHT,
-    width: '100%',
-  },
-
-  // Centre pin
+  // Centre pin on map
   centerPin: {
     width: 28,
     height: 28,
@@ -358,44 +402,52 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '-45deg' }],
   },
 
-  // Live Sat toggle — positioned inside mapContainer so it's above the sheet
+  // Live Sat / AI Map toggle — absolute sibling, above the sheet
   satToggle: {
     position: 'absolute',
-    top: 12,
     right: 14,
-    backgroundColor: 'rgba(10,10,10,0.75)',
-    borderWidth: 0.5,
-    borderColor: colors.bs,
+    zIndex: 20,
+    backgroundColor: 'rgba(10,10,10,0.82)',
+    borderWidth: 1,
+    borderColor: colors.a,
     borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
   satToggleText: {
-    fontFamily: fonts.mono,
+    fontFamily: fonts.monoMd,
     fontSize: 11,
-    color: colors.t3,
-    letterSpacing: 11 * 0.04,
-  },
-  satToggleActive: {
     color: colors.a,
+    letterSpacing: 11 * 0.05,
+    textTransform: 'uppercase',
+  },
+  satToggleInactive: {
+    color: colors.t3,
   },
 
-  // Sheet
+  // Animated sheet
   sheet: {
-    flex: 1,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: SCREEN_H,
     backgroundColor: colors.s1,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    marginTop: -24,
-    paddingTop: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 20,
   },
   handle: {
     width: 36,
     height: 4,
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: 'rgba(255,255,255,0.25)',
     borderRadius: 2,
     alignSelf: 'center',
-    marginBottom: 2,
+    marginTop: 10,
+    marginBottom: 4,
   },
   sheetContent: {
     paddingHorizontal: 20,
@@ -444,7 +496,6 @@ const styles = StyleSheet.create({
 
   // CTA (.tk)
   tk: {
-    marginTop: 'auto' as any,
     backgroundColor: colors.a,
     borderRadius: 13,
     paddingVertical: 15,

@@ -210,6 +210,25 @@ The following design decisions must be resolved before Gate C implementation sta
 
 ---
 
+## Checkpoint 3 polish candidates
+
+### AI Map spot interpretation — marker legibility
+
+User test feedback (2026-05-21): users do not recognise that the green/red dots on
+the AI Map are individual parking spaces. The dots are one circle per detected space
+(green = open, red = occupied), radius 1.2m at z19, rendered via react-native-maps
+`Circle`. They are correct but not self-evident.
+
+**Two candidate fixes for Checkpoint 3** (do not implement before then):
+1. Increase Circle radius from 1.2 to 2.0–2.5 so dots are more visible at default
+   zoom level.
+2. Add a small legend overlay in the map area (bottom-left, above the sheet):
+   `• open  • full` with green/red dot indicators. Keep it compact (mono 10pt,
+   semi-transparent bg). Alternatively, show a first-load tooltip that dismisses
+   on tap (stored in AsyncStorage so it only shows once).
+
+---
+
 ## V6 deferred items (flagged during Gate C Gate 1)
 
 ### entrance_lat / entrance_lng — per-lot navigation precision
