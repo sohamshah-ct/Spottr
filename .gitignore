@@ -5,8 +5,17 @@ node_modules/
 # Env files
 .env
 .env.local
+.env.production
+.env.development
+.env.staging
 .env.*.local
 *.local
+
+# Certificates and private keys
+*.pem
+*.key
+*.p12
+*.pfx
 
 # Build outputs
 dist/

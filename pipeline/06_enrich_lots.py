@@ -14,10 +14,9 @@ import psycopg2.extras
 import requests
 from tqdm import tqdm
 
-MAPBOX_TOKEN = os.environ.get(
-    "MAPBOX_TOKEN",
-    "REDACTED_MAPBOX_TOKEN",
-)
+MAPBOX_TOKEN = os.environ.get("MAPBOX_TOKEN")
+if not MAPBOX_TOKEN:
+    raise RuntimeError("MAPBOX_TOKEN environment variable is required")
 
 DB_URL = (
     os.environ.get("DATABASE_URL")

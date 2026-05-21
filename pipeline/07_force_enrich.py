@@ -18,16 +18,14 @@ import psycopg2.extras
 import requests
 from tqdm import tqdm
 
-MAPBOX_TOKEN = (
-    os.environ.get("MAPBOX_TOKEN")
-    or "REDACTED_MAPBOX_TOKEN"
-)
+MAPBOX_TOKEN = os.environ.get("MAPBOX_TOKEN")
+if not MAPBOX_TOKEN:
+    raise RuntimeError("MAPBOX_TOKEN environment variable is required")
 
 DB_URL = (
     os.environ.get("DATABASE_URL")
     or os.environ.get("DATABASE_PUBLIC_URL")
     or os.environ.get("RAILWAY_DATABASE_URL")
-    or "postgresql://postgres:REDACTED_DB_PASSWORD@yamabiko.proxy.rlwy.net:38603/railway?sslmode=no-verify"
 )
 
 SESSION = requests.Session()
