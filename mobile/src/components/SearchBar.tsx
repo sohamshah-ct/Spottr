@@ -1,6 +1,6 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { fonts, colors } from '../theme';
+import React, { useRef } from 'react';
+import { View, Text, TouchableOpacity, Animated, StyleSheet } from 'react-native';
+import { useTheme, fonts } from '../theme';
 
 interface SearchBarProps {
   placeholder?: string;
@@ -15,51 +15,66 @@ interface SearchBarProps {
  * Spec .sbar:
  *   background: s2, border: 0.5px solid b, border-radius 12,
  *   padding 11 14, flex row, gap 10
- *   icon: t3, 18px
- *   placeholder: t3, 14px
  *
- * Two render modes:
- *   passive=false (default): TouchableOpacity wrapper — tapping opens Search
- *   passive=true: plain View — used inside the bottom sheet's handle area
- *   where the gesture handler owns touch events
+ * Polish: scale-down feedback on press.
  */
 export default function SearchBar({ placeholder = 'Search lots, malls, campuses…', onPress, passive = false }: SearchBarProps) {
+  const { colors } = useTheme();
+  const scale = useRef(new Animated.Value(1)).current;
+
+  function onPressIn() {
+    Animated.timing(scale, { toValue: 0.97, duration: 80, useNativeDriver: true }).start();
+  }
+  function onPressOut() {
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, tension: 200, friction: 8 }).start();
+  }
+
   const inner = (
-    <View style={styles.bar}>
-      <Text style={styles.icon}>⌕</Text>
-      <Text style={styles.placeholder} numberOfLines={1}>{placeholder}</Text>
-    </View>
+    <Animated.View
+      style={[
+        s.bar,
+        {
+          backgroundColor: colors.s2,
+          borderColor: colors.b,
+          transform: [{ scale }],
+        },
+      ]}
+    >
+      <Text style={[s.icon, { color: colors.t3 }]}>⌕</Text>
+      <Text style={[s.placeholder, { color: colors.t3 }]} numberOfLines={1}>{placeholder}</Text>
+    </Animated.View>
   );
 
   if (passive || !onPress) return inner;
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.75}>
+    <TouchableOpacity
+      onPress={onPress}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      activeOpacity={1}
+    >
       {inner}
     </TouchableOpacity>
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   bar: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: colors.s2,
     borderWidth: 0.5,
-    borderColor: colors.b,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 11,
   },
   icon: {
     fontSize: 18,
-    color: colors.t3,
     fontFamily: fonts.sans,
   },
   placeholder: {
     flex: 1,
     fontFamily: fonts.sans,
     fontSize: 14,
-    color: colors.t3,
   },
 });

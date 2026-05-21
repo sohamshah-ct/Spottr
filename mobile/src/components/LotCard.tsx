@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { fonts, colors } from '../theme';
+import { useTheme, fonts } from '../theme';
 import FreshnessLabel from './FreshnessLabel';
 import type { Lot } from '../services/api';
 
@@ -19,6 +19,8 @@ interface LotCardProps {
  * Count color: state A/B/C = accent, state D = t1 (white).
  */
 export default function LotCard({ lot, onPress }: LotCardProps) {
+  const { colors } = useTheme();
+
   const count = lot.total_spaces != null ? String(lot.total_spaces) : '—';
   const subtitle = lot.city ?? lot.address ?? '';
   const freshState = lot.freshness_state ?? 'D';
@@ -26,27 +28,34 @@ export default function LotCard({ lot, onPress }: LotCardProps) {
   const countColor = freshState === 'D' ? colors.t1 : colors.a;
 
   return (
-    <TouchableOpacity style={styles.row} onPress={() => onPress(lot)} activeOpacity={0.7}>
-      <View style={styles.left}>
-        <Text style={styles.name} numberOfLines={1}>{lot.name ?? 'Parking Lot'}</Text>
-        {!!subtitle && <Text style={styles.sub} numberOfLines={1}>{subtitle}</Text>}
+    <TouchableOpacity
+      style={[s.row, { borderBottomColor: colors.b }]}
+      onPress={() => onPress(lot)}
+      activeOpacity={0.7}
+    >
+      <View style={s.left}>
+        <Text style={[s.name, { color: colors.t1 }]} numberOfLines={1}>
+          {lot.name ?? 'Parking Lot'}
+        </Text>
+        {!!subtitle && (
+          <Text style={[s.sub, { color: colors.t3 }]} numberOfLines={1}>{subtitle}</Text>
+        )}
       </View>
-      <View style={styles.right}>
-        <Text style={[styles.count, { color: countColor }]}>{count}</Text>
+      <View style={s.right}>
+        <Text style={[s.count, { color: countColor }]}>{count}</Text>
         <FreshnessLabel label={freshLabel} />
       </View>
     </TouchableOpacity>
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     paddingVertical: 10,
     borderBottomWidth: 0.5,
-    borderBottomColor: colors.b,
   },
   left: {
     flex: 1,
@@ -55,13 +64,11 @@ const styles = StyleSheet.create({
   name: {
     fontFamily: fonts.sansMd,
     fontSize: 14,
-    color: colors.t1,
     marginBottom: 3,
   },
   sub: {
     fontSize: 12,
     fontFamily: fonts.sans,
-    color: colors.t3,
   },
   right: {
     alignItems: 'flex-end',

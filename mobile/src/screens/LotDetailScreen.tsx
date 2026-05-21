@@ -23,17 +23,41 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { api, type Lot, type RowsResponse, type Space, type Zone } from '../services/api';
-import { colors, fonts } from '../theme';
+import { useTheme, colors, fonts } from '../theme';
 import BigNumberCount from '../components/BigNumberCount';
 import FreshnessLabel from '../components/FreshnessLabel';
 import ZoneThumbnail from '../components/ZoneThumbnail';
 import ConfidencePill from '../components/ConfidencePill';
 import type { RootStackParamList } from '../../App';
+import * as Haptics from 'expo-haptics';
+import { useParkingStore, startParkingWatcher } from '../services/parkingStateMachine';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const MAPBOX_TOKEN = (process.env as any).EXPO_PUBLIC_MAPBOX_TOKEN ?? '';
 const MAPBOX_TILE_URL = `https://api.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}@2x.jpg90?access_token=${MAPBOX_TOKEN}`;
+
+/**
+ * AI Map zoom — latitudeDelta ≈ 0.0002° ≈ 22 m N–S visible at a
+ * typical phone screen height. Equivalent to ~zoom 19–20.
+ * Small enough to resolve individual parking stripes in Mapbox satellite.
+ */
+const AI_MAP_LAT_DELTA = 0.00022;
+const AI_MAP_LNG_DELTA = 0.00022;
+
+/**
+ * CTECO 2023 orthophoto — 7.6 cm/pixel, Connecticut only.
+ * ArcGIS REST ImageServer tile endpoint: /tile/{z}/{y}/{x}
+ * (react-native-maps replaces {z}/{y}/{x} template variables correctly)
+ */
+const CTECO_TILE_URL =
+  'https://cteco.uconn.edu/ctraster/rest/services/images/Ortho_2023_tiled/ImageServer/tile/{z}/{y}/{x}';
+
+/** CT bounding box — CTECO imagery coverage */
+function isCtecoAvailable(lot: Lot): boolean {
+  return lot.lat >= 40.95 && lot.lat <= 42.05 &&
+         lot.lng >= -73.74 && lot.lng <= -71.78;
+}
 
 const { height: SCREEN_H } = Dimensions.get('window');
 // Snap positions: translateY = distance from screen top to sheet top
@@ -84,6 +108,8 @@ function regionFromLot(lot: Lot) {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function LotDetailScreen({ route, navigation }: Props) {
+  const { colors } = useTheme();
+  const startSearching = useParkingStore(s => s.startSearching);
   const { lotId, lotName, lot: routeLot } = route.params ?? {};
   const insets = useSafeAreaInsets();
 
@@ -216,12 +242,22 @@ export default function LotDetailScreen({ route, navigation }: Props) {
 
   const mapRegion = regionFromLot(displayLot);
 
+  // AI Map mode: zoom in on best zone centroid so parking stripes are visible
+  const aiMapCenter = sortedZones[0]
+    ? { latitude: sortedZones[0].centroid_lat, longitude: sortedZones[0].centroid_lng }
+    : { latitude: displayLot.lat, longitude: displayLot.lng };
+  const aiMapRegion = { ...aiMapCenter, latitudeDelta: AI_MAP_LAT_DELTA, longitudeDelta: AI_MAP_LNG_DELTA };
+
+  // CTECO high-res imagery — use for CT lots when in AI Map mode
+  // Falls back to Mapbox zoom-20 for non-CT lots (Change 1 behaviour)
+  const useCtecoTiles = showMarkers && (displayLot.cteco_available ?? isCtecoAvailable(displayLot));
+
   return (
     <View style={styles.root}>
       {/* ── Map — fills full screen behind sheet ──────────────────────────── */}
       <MapView
         style={StyleSheet.absoluteFillObject}
-        region={mapRegion}
+        region={showMarkers ? aiMapRegion : mapRegion}
         showsUserLocation={false}
         showsMyLocationButton={false}
         showsCompass={false}
@@ -230,9 +266,28 @@ export default function LotDetailScreen({ route, navigation }: Props) {
         zoomEnabled={false}
         pitchEnabled={false}
       >
-        {!!MAPBOX_TOKEN && (
-          <UrlTile urlTemplate={MAPBOX_TILE_URL} maximumZ={19} flipY={false} tileSize={256} />
+        {/* Mapbox satellite — maximumZ 20 in AI Map mode for sharper stripe detail.
+            Hidden when CTECO tiles are active (CTECO is higher resolution). */}
+        {!!MAPBOX_TOKEN && !useCtecoTiles && (
+          <UrlTile
+            urlTemplate={MAPBOX_TILE_URL}
+            maximumZ={showMarkers ? 20 : 19}
+            flipY={false}
+            tileSize={256}
+          />
         )}
+
+        {/* CTECO 2023 orthophoto — 7.6 cm/px, CT lots only, AI Map mode only.
+            Rendered above the default map layer; no Mapbox token required. */}
+        {useCtecoTiles && (
+          <UrlTile
+            urlTemplate={CTECO_TILE_URL}
+            maximumZ={21}
+            flipY={false}
+            tileSize={256}
+          />
+        )}
+
         <Marker coordinate={{ latitude: displayLot.lat, longitude: displayLot.lng }} anchor={{ x: 0.5, y: 1 }}>
           <View style={styles.centerPin}>
             <Text style={styles.centerPinText}>P</Text>
@@ -244,7 +299,7 @@ export default function LotDetailScreen({ route, navigation }: Props) {
             center={{ latitude: sp.lat, longitude: sp.lng }}
             radius={1.2}
             strokeColor={sp.occupied ? colors.full : colors.a}
-            fillColor={sp.occupied ? colors.full : colors.a}
+            fillColor={sp.occupied  ? colors.full : colors.a}
             strokeWidth={0}
           />
         ))}
@@ -313,8 +368,30 @@ export default function LotDetailScreen({ route, navigation }: Props) {
 
           {/* ── "Take me there" CTA (.tk) ─────────────────────────────── */}
           <TouchableOpacity
-            style={styles.tk}
-            onPress={() => openMaps(destLat, destLng)}
+            style={[styles.tk, { backgroundColor: colors.a }]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+              const bestZone = sortedZones[0];
+              startSearching({
+                lotId,
+                lot: displayLot,
+                zoneCentLat: bestZone?.centroid_lat ?? displayLot.place_lat ?? displayLot.lat,
+                zoneCentLng: bestZone?.centroid_lng ?? displayLot.place_lng ?? displayLot.lng,
+                openCount:   openCount,
+                zoneName:    bestZone?.name ?? null,
+              });
+              startParkingWatcher().catch(() => {});
+              openMaps(destLat, destLng);
+              navigation.navigate('Approach', {
+                lotId,
+                lotName:     displayLot.name ?? undefined,
+                lot:         displayLot,
+                zoneCentLat: bestZone?.centroid_lat ?? displayLot.place_lat ?? displayLot.lat,
+                zoneCentLng: bestZone?.centroid_lng ?? displayLot.place_lng ?? displayLot.lng,
+                openCount:   openCount,
+                zoneName:    bestZone?.name ?? null,
+              });
+            }}
             activeOpacity={0.85}
           >
             <Text style={styles.tkIcon}>→</Text>

@@ -9,7 +9,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#080A0F"
+      "backgroundColor": "#0A0A0A"
     },
     "ios": {
       "supportsTablet": false,
@@ -21,7 +21,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#080A0F"
+        "backgroundColor": "#0A0A0A"
       },
       "package": "com.spottr.app",
       "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
@@ -40,12 +40,6 @@
         "expo-location",
         {
           "locationWhenInUsePermission": "Spottr uses your location to show nearby parking lots."
-        }
-      ],
-      [
-        "react-native-maps",
-        {
-          "googleMapsApiKey": "REDACTED_GOOGLE_KEY_2"
         }
       ]
     ]

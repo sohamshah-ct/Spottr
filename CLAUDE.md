@@ -231,6 +231,37 @@ the AI Map are individual parking spaces. The dots are one circle per detected s
 
 ## V6 deferred items (flagged during Gate C Gate 1)
 
+### AI Map source-tile persistence (Change 3 — flagged Gate C2)
+
+**Problem:** The AI Map currently shows Mapbox or CTECO tiles as the base layer,
+overlaid with detected spot circles. These tiles are fetched live and may differ
+from the exact satellite imagery Modal ran CV against (different capture date,
+different provider, different zoom). Users cannot be 100% certain the spot circles
+align with the pixels the model analysed.
+
+**Solution:**
+- During Modal detection, save the input satellite tile(s) to object storage
+  (Cloudflare R2 or AWS S3). Key: `cv_tiles/{lot_id}/{detected_at_unix}.jpg`
+- Add columns to lots table:
+  ```sql
+  ALTER TABLE lots
+    ADD COLUMN cv_tile_url TEXT,
+    ADD COLUMN cv_tile_bbox_north FLOAT,
+    ADD COLUMN cv_tile_bbox_south FLOAT,
+    ADD COLUMN cv_tile_bbox_east  FLOAT,
+    ADD COLUMN cv_tile_bbox_west  FLOAT;
+  ```
+- Mobile: when `lot.cv_tile_url` is set, render it as a react-native-maps
+  `Overlay` (anchored to `cv_tile_bbox`) in AI Map mode instead of live tiles.
+  This guarantees the imagery shown === the imagery analysed.
+- Fallback: CTECO (CT lots) → Mapbox z20 (non-CT) when `cv_tile_url` is absent.
+
+**Priority trigger:** Implement when user research confirms that "I can verify
+each dot is on a real space" is a conversion-critical trust signal. Estimated
+1–2 days of engineering (Modal pipe + R2 write + mobile ImageOverlay).
+
+---
+
 ### entrance_lat / entrance_lng — per-lot navigation precision
 
 `place_lat` / `place_lng` from the Places API pin is used as the "Take me there"

@@ -4,25 +4,24 @@
  * Layout:
  *   - MapView (react-native-maps + Mapbox satellite UrlTile) fills screen
  *   - Lot pins on map (accent = fresh A/B/C, dim = D)
- *   - @gorhom/bottom-sheet at 30% / 60% / 95%
+ *   - Animated bottom sheet at 30% / 60% / 95% (pure RN Animated, no native deps)
  *   - Sheet: SearchBar → "nearby/recent" label → LotCard list
  *
  * Spec: spottr-finalframe.html SCREEN 04
  */
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet,
+  View, Text, StyleSheet, Animated, PanResponder, Dimensions, ScrollView,
 } from 'react-native';
 import MapView, { Marker, UrlTile } from 'react-native-maps';
-import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { api, type Lot } from '../services/api';
-import { colors, fonts } from '../theme';
+import { useTheme, fonts } from '../theme';
 import SearchBar from '../components/SearchBar';
 import LotCard from '../components/LotCard';
 import type { RootStackParamList } from '../../App';
@@ -34,11 +33,21 @@ const MAPBOX_TILE_URL = `https://api.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}@
 const RECENT_KEY = '@spottr_recent_lots';
 const MAX_RECENT = 8;
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+const { height: SCREEN_H } = Dimensions.get('window');
+const SNAP_30  = SCREEN_H * 0.70;
+const SNAP_60  = SCREEN_H * 0.40;
+const SNAP_95  = SCREEN_H * 0.05;
+const SNAPS    = [SNAP_30, SNAP_60, SNAP_95];
+
+function nearestSnap(y: number): number {
+  return SNAPS.reduce((prev, curr) =>
+    Math.abs(curr - y) < Math.abs(prev - y) ? curr : prev
+  );
+}
+
+const PIN_SIZE = 32;
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Home'>;
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function isFresh(lot: Lot): boolean {
   return lot.freshness_state != null && lot.freshness_state !== 'D';
@@ -48,15 +57,12 @@ async function loadRecent(): Promise<Lot[]> {
   try {
     const raw = await AsyncStorage.getItem(RECENT_KEY);
     return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+  } catch { return []; }
 }
 
 async function saveRecent(lot: Lot, existing: Lot[]): Promise<void> {
   try {
-    const filtered = existing.filter(l => l.id !== lot.id);
-    const next = [lot, ...filtered].slice(0, MAX_RECENT);
+    const next = [lot, ...existing.filter(l => l.id !== lot.id)].slice(0, MAX_RECENT);
     await AsyncStorage.setItem(RECENT_KEY, JSON.stringify(next));
   } catch { /* ignore */ }
 }
@@ -64,21 +70,47 @@ async function saveRecent(lot: Lot, existing: Lot[]): Promise<void> {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function HomeScreen() {
+  const { colors } = useTheme();
   const nav = useNavigation<Nav>();
-  const sheetRef = useRef<BottomSheet>(null);
-  const snapPoints = useMemo(() => ['30%', '60%', '95%'], []);
+  const translateY = useRef(new Animated.Value(SNAP_30)).current;
+  const lastY = useRef(SNAP_30);
 
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [lots, setLots] = useState<Lot[]>([]);
   const [recentLots, setRecentLots] = useState<Lot[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // ── Load recent lots from storage ──────────────────────────────────────────
-  useEffect(() => {
-    loadRecent().then(setRecentLots);
-  }, []);
+  const snapTo = useCallback((y: number) => {
+    lastY.current = y;
+    Animated.spring(translateY, {
+      toValue: y,
+      useNativeDriver: true,
+      tension: 68,
+      friction: 12,
+    }).start();
+  }, [translateY]);
 
-  // ── Get GPS + fetch nearby lots ───────────────────────────────────────────
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dy) > 5,
+      onPanResponderGrant: () => {
+        translateY.stopAnimation(v => { lastY.current = v; });
+        (translateY as any).setOffset(lastY.current);
+        (translateY as any).setValue(0);
+      },
+      onPanResponderMove: Animated.event([null, { dy: translateY }], { useNativeDriver: false }),
+      onPanResponderRelease: (_, g) => {
+        (translateY as any).flattenOffset();
+        const rawY = lastY.current + g.dy;
+        const clampedY = Math.max(SNAP_95, Math.min(SNAP_30, rawY));
+        const snap = g.vy > 0.5 ? SNAP_30 : g.vy < -0.5 ? SNAP_95 : nearestSnap(clampedY);
+        snapTo(snap);
+      },
+    })
+  ).current;
+
+  useEffect(() => { loadRecent().then(setRecentLots); }, []);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -89,7 +121,6 @@ export default function HomeScreen() {
         if (cancelled) return;
         const { latitude: lat, longitude: lng } = pos.coords;
         setLocation({ lat, lng });
-
         const resp = await api.getLotsNear(lat, lng, 800);
         if (!cancelled) setLots(resp.lots);
       } catch (err) {
@@ -101,7 +132,6 @@ export default function HomeScreen() {
     return () => { cancelled = true; };
   }, []);
 
-  // ── Navigate to LotDetail ─────────────────────────────────────────────────
   const handleLotPress = useCallback((lot: Lot) => {
     setRecentLots(prev => {
       const next = [lot, ...prev.filter(l => l.id !== lot.id)].slice(0, MAX_RECENT);
@@ -111,192 +141,132 @@ export default function HomeScreen() {
     nav.navigate('LotDetail', { lotId: lot.id, lotName: lot.name ?? undefined, lot });
   }, [nav]);
 
-  // ── Display list: API lots if available, else recent ─────────────────────
   const displayLots = lots.length > 0 ? lots : recentLots;
-  const listLabel = lots.length > 0 ? 'nearby' : 'recent';
+  const listLabel   = lots.length > 0 ? 'nearby' : 'recent';
 
-  // ── Map region ────────────────────────────────────────────────────────────
   const initialRegion = location
     ? { latitude: location.lat, longitude: location.lng, latitudeDelta: 0.02, longitudeDelta: 0.02 }
     : { latitude: 41.8, longitude: -72.56, latitudeDelta: 0.05, longitudeDelta: 0.05 };
 
   return (
-    <View style={styles.root}>
-      {/* ── Map ─────────────────────────────────────────────────────────── */}
+    <View style={[s.root, { backgroundColor: colors.bg }]}>
+      {/* ── Map ───────────────────────────────────────────────────────────── */}
       <MapView
         style={StyleSheet.absoluteFillObject}
         initialRegion={initialRegion}
         showsUserLocation
         showsMyLocationButton={false}
         showsCompass={false}
-        showsScale={false}
         rotateEnabled={false}
         toolbarEnabled={false}
       >
         {!!MAPBOX_TOKEN && (
-          <UrlTile
-            urlTemplate={MAPBOX_TILE_URL}
-            maximumZ={19}
-            flipY={false}
-            tileSize={256}
-          />
+          <UrlTile urlTemplate={MAPBOX_TILE_URL} maximumZ={19} flipY={false} tileSize={256} />
         )}
-
-        {/* Lot pins */}
-        {lots.map(lot => (
-          <Marker
-            key={lot.id}
-            coordinate={{ latitude: lot.lat, longitude: lot.lng }}
-            onPress={() => handleLotPress(lot)}
-            anchor={{ x: 0.5, y: 1 }}
-          >
-            <View style={[styles.pin, isFresh(lot) ? styles.pinFresh : styles.pinDim]}>
-              <Text style={[styles.pinText, isFresh(lot) ? styles.pinTextFresh : styles.pinTextDim]}>
-                P
-              </Text>
-            </View>
-            {isFresh(lot) && lot.total_spaces != null && (
-              <View style={styles.pinLabel}>
-                <Text style={styles.pinLabelText}>
-                  {(lot.name ?? 'LOT').toUpperCase().slice(0, 8)} · {lot.total_spaces}
-                </Text>
+        {lots.map(lot => {
+          const fresh = isFresh(lot);
+          return (
+            <Marker
+              key={lot.id}
+              coordinate={{ latitude: lot.lat, longitude: lot.lng }}
+              onPress={() => handleLotPress(lot)}
+              anchor={{ x: 0.5, y: 1 }}
+            >
+              <View style={[
+                s.pin,
+                {
+                  backgroundColor: fresh ? colors.a    : colors.s3,
+                  borderColor:     fresh ? colors.a    : 'rgba(255,255,255,0.4)',
+                },
+              ]}>
+                <Text style={[s.pinText, { color: fresh ? colors.bg : colors.t2 }]}>P</Text>
               </View>
-            )}
-          </Marker>
-        ))}
+              {fresh && lot.total_spaces != null && (
+                <View style={[s.pinLabel, { backgroundColor: colors.bg, borderColor: colors.bs }]}>
+                  <Text style={[s.pinLabelText, { color: colors.t1 }]}>
+                    {(lot.name ?? 'LOT').toUpperCase().slice(0, 8)} · {lot.total_spaces}
+                  </Text>
+                </View>
+              )}
+            </Marker>
+          );
+        })}
       </MapView>
 
-      {/* ── Bottom Sheet ─────────────────────────────────────────────────── */}
-      <BottomSheet
-        ref={sheetRef}
-        index={0}
-        snapPoints={snapPoints}
-        backgroundStyle={styles.sheetBg}
-        handleIndicatorStyle={styles.sheetHandle}
-        enablePanDownToClose={false}
+      {/* ── Animated bottom sheet ─────────────────────────────────────────── */}
+      <Animated.View
+        style={[s.sheet, { backgroundColor: colors.s1, transform: [{ translateY }] }]}
+        {...panResponder.panHandlers}
       >
-        <BottomSheetScrollView
-          contentContainerStyle={styles.sheetContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Search bar — tapping navigates to Search */}
-          <SearchBar
-            placeholder="where are you going?"
-            onPress={() => nav.navigate('Search')}
-          />
+        <View style={[s.handle, { backgroundColor: 'rgba(255,255,255,0.18)' }]} />
 
-          {/* List label */}
+        <View style={s.sheetContent}>
+          <SearchBar placeholder="where are you going?" onPress={() => nav.navigate('Search')} />
           {displayLots.length > 0 && (
-            <Text style={styles.slab}>{listLabel}</Text>
+            <Text style={[s.slab, { color: colors.t3 }]}>{listLabel}</Text>
           )}
-
-          {/* Loading / empty states */}
           {loading && lots.length === 0 && (
-            <Text style={styles.emptyText}>Finding nearby lots…</Text>
+            <Text style={[s.emptyText, { color: colors.t3 }]}>Finding nearby lots…</Text>
           )}
           {!loading && displayLots.length === 0 && (
-            <Text style={styles.emptyText}>No lots found nearby</Text>
+            <Text style={[s.emptyText, { color: colors.t3 }]}>No lots found nearby</Text>
           )}
+        </View>
 
-          {/* Lot cards */}
+        <ScrollView
+          style={s.scroll}
+          contentContainerStyle={s.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          scrollEventThrottle={16}
+        >
           {displayLots.map(lot => (
             <LotCard key={lot.id} lot={lot} onPress={handleLotPress} />
           ))}
-        </BottomSheetScrollView>
-      </BottomSheet>
+        </ScrollView>
+      </Animated.View>
     </View>
   );
 }
 
-// ── Styles ────────────────────────────────────────────────────────────────────
+// ── Styles — no color values; all colors applied inline ───────────────────────
 
-const PIN_SIZE = 32;
+const s = StyleSheet.create({
+  root: { flex: 1 },
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: colors.bg,
-  },
-
-  // Pins (spec: accent fill for fresh, s3 fill for dim; diamond via rotate)
   pin: {
-    width: PIN_SIZE,
-    height: PIN_SIZE,
-    borderRadius: PIN_SIZE / 2,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: PIN_SIZE, height: PIN_SIZE, borderRadius: PIN_SIZE / 2,
+    borderWidth: 2, alignItems: 'center', justifyContent: 'center',
     transform: [{ rotate: '45deg' }],
   },
-  pinFresh: {
-    backgroundColor: colors.a,
-    borderColor: colors.a,
-  },
-  pinDim: {
-    backgroundColor: colors.s3,
-    borderColor: 'rgba(255,255,255,0.4)',
-  },
-  pinText: {
-    transform: [{ rotate: '-45deg' }],
-    fontSize: 13,
-    fontFamily: fonts.sansBold,
-    lineHeight: 16,
-  },
-  pinTextFresh: {
-    color: colors.bg,
-  },
-  pinTextDim: {
-    color: colors.t2,
-  },
+  pinText: { transform: [{ rotate: '-45deg' }], fontSize: 13, fontFamily: fonts.sansBold, lineHeight: 16 },
   pinLabel: {
-    marginTop: 2,
-    backgroundColor: colors.bg,
-    borderWidth: 0.5,
-    borderColor: colors.bs,
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    alignSelf: 'center',
+    marginTop: 2, borderWidth: 0.5,
+    borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4, alignSelf: 'center',
   },
-  pinLabelText: {
-    fontFamily: fonts.mono,
-    fontSize: 10,
-    color: colors.t1,
-    letterSpacing: 10 * 0.03,
-  },
+  pinLabelText: { fontFamily: fonts.mono, fontSize: 10, letterSpacing: 0.3 },
 
-  // Bottom sheet
-  sheetBg: {
-    backgroundColor: colors.s1,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+  sheet: {
+    position: 'absolute', left: 0, right: 0,
+    height: SCREEN_H,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    shadowColor: '#000', shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.3, shadowRadius: 12, elevation: 20,
   },
-  sheetHandle: {
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    width: 36,
-    height: 4,
+  handle: {
+    width: 36, height: 4,
+    borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 8,
   },
-  sheetContent: {
-    paddingHorizontal: 18,
-    paddingBottom: 40,
-    paddingTop: 4,
-  },
+  sheetContent: { paddingHorizontal: 18 },
+  scroll: { flex: 1 },
+  scrollContent: { paddingHorizontal: 18, paddingBottom: 40 },
 
-  // Section label (.slab)
   slab: {
-    fontFamily: fonts.mono,
-    fontSize: 11,
-    color: colors.t3,
-    letterSpacing: 11 * 0.06,
-    textTransform: 'lowercase',
-    marginTop: 14,
-    marginBottom: 6,
+    fontFamily: fonts.mono, fontSize: 11,
+    letterSpacing: 11 * 0.06, textTransform: 'lowercase',
+    marginTop: 14, marginBottom: 6,
   },
   emptyText: {
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    color: colors.t3,
-    marginTop: 20,
-    textAlign: 'center',
+    fontFamily: fonts.sans, fontSize: 14,
+    marginTop: 20, textAlign: 'center',
   },
 });

@@ -51,6 +51,8 @@ export interface Lot {
   bbox_south?: number;
   bbox_east?: number;
   bbox_west?: number;
+  // Gate C2 — CTECO high-res imagery availability
+  cteco_available?: boolean;
 }
 
 export interface LotsNearResponse {

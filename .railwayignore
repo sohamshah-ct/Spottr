@@ -1,0 +1,10 @@
+node_modules/
+backend/node_modules/
+mobile/node_modules/
+.expo/
+mobile/.expo/
+*.pt
+diagnostics/
+spottr-complete.html
+yolov8x.pt
+yolov8x-obb.pt

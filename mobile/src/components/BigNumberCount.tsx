@@ -1,6 +1,6 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { fonts, colors } from '../theme';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, Animated, StyleSheet } from 'react-native';
+import { useTheme, fonts } from '../theme';
 
 interface BigNumberCountProps {
   count: number | null;
@@ -14,18 +14,39 @@ interface BigNumberCountProps {
  *   .bnb: flex row, align flex-end, gap 12, margin 20 0 4
  *   .bn:  62px / accent / 500 / line-height .9 / letter-spacing -.03em
  *   .bl:  14px / t2 / padding-bottom 8 (aligns baseline with number)
+ *
+ * Polish: scale-bounce animation when count value changes.
  */
 export default function BigNumberCount({ count, label = 'open' }: BigNumberCountProps) {
+  const { colors } = useTheme();
+  const scale = useRef(new Animated.Value(1)).current;
+  const prevCount = useRef(count);
+
+  useEffect(() => {
+    if (prevCount.current !== count && count != null) {
+      prevCount.current = count;
+      Animated.sequence([
+        Animated.timing(scale, { toValue: 1.08, duration: 120, useNativeDriver: true }),
+        Animated.spring(scale,  { toValue: 1.00, useNativeDriver: true, tension: 180, friction: 8 }),
+      ]).start();
+    }
+  }, [count, scale]);
+
   const display = count != null ? String(count) : '—';
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.number}>{display}</Text>
-      <Text style={styles.label}>{label}</Text>
+    <View style={s.container}>
+      <Animated.Text
+        style={[s.number, { color: colors.a, transform: [{ scale }] }]}
+      >
+        {display}
+      </Animated.Text>
+      <Text style={[s.label, { color: colors.t2 }]}>{label}</Text>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -36,14 +57,12 @@ const styles = StyleSheet.create({
   number: {
     fontFamily: fonts.sansMd,
     fontSize: 62,
-    color: colors.a,
     lineHeight: 62 * 0.9,
     letterSpacing: 62 * -0.03,
   },
   label: {
     fontFamily: fonts.sans,
     fontSize: 14,
-    color: colors.t2,
     paddingBottom: 8,
   },
 });

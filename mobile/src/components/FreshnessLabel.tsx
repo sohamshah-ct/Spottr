@@ -1,6 +1,6 @@
 import React from 'react';
-import { Text, StyleSheet } from 'react-native';
-import { fonts, colors } from '../theme';
+import { Text } from 'react-native';
+import { useTheme, fonts } from '../theme';
 
 interface FreshnessLabelProps {
   label: string;
@@ -13,19 +13,13 @@ interface FreshnessLabelProps {
  *               text-align: right; margin-top: 2px; }
  */
 export default function FreshnessLabel({ label, style }: FreshnessLabelProps) {
+  const { colors } = useTheme();
   return (
-    <Text style={[styles.label, style]} numberOfLines={1}>
+    <Text
+      style={[{ fontFamily: fonts.mono, fontSize: 11, color: colors.t3, textAlign: 'right', marginTop: 2 }, style]}
+      numberOfLines={1}
+    >
       {label}
     </Text>
   );
 }
-
-const styles = StyleSheet.create({
-  label: {
-    fontFamily: fonts.mono,
-    fontSize: 11,
-    color: colors.t3,
-    textAlign: 'right',
-    marginTop: 2,
-  },
-});

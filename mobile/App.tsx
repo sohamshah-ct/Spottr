@@ -13,7 +13,6 @@
 
 import React from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -31,6 +30,7 @@ import {
 
 import { ThemeProvider, useTheme, fonts, colors as C } from './src/theme';
 import type { Lot } from './src/services/api';
+import { useParkingStore } from './src/services/parkingStateMachine';
 
 import SplashScreen      from './src/screens/SplashScreen';
 import OnboardingScreen  from './src/screens/OnboardingScreen';
@@ -38,7 +38,6 @@ import PermissionsScreen from './src/screens/PermissionsScreen';
 import HomeScreen        from './src/screens/HomeScreen';
 import SearchScreen      from './src/screens/SearchScreen';
 import LotDetailScreen   from './src/screens/LotDetailScreen';
-import ApproachScreen    from './src/screens/ApproachScreen';
 import ParkedScreen      from './src/screens/ParkedScreen';
 import DrivingScreen     from './src/screens/DrivingScreen';
 import RerouteScreen     from './src/screens/RerouteScreen';
@@ -53,12 +52,20 @@ export type RootStackParamList = {
   Home:        undefined;
   Search:      undefined;
   LotDetail:   { lotId: string; lotName?: string; lot?: Lot };
-  Approach:    { lotId: string; lotName?: string; instruction?: string };
+  Approach:    {
+    lotId:       string;
+    lotName?:    string;
+    lot?:        Lot;
+    zoneCentLat?: number;
+    zoneCentLng?: number;
+    openCount?:  number;
+    zoneName?:   string | null;
+  };
   Parked:      { lotId: string; lotName?: string; spotId?: string; timeSavedMin?: number };
-
-  // Legacy routes — kept for backward compat until Checkpoint 3
-  Driving:     { lotId: string; rowLabel: string; rowLat: number; rowLng: number; lotName?: string };
   Reroute:     { lotId: string; oldRow: string; newRow: string; newRowLat: number; newRowLng: number; openCount: number; lotName?: string };
+
+  // Legacy route — kept so DrivingScreen can navigate back from DrivingScreen (Reroute → Approach)
+  Driving:     { lotId: string; rowLabel: string; rowLat: number; rowLng: number; lotName?: string };
 
   // Typography smoke-test screen — remove before production
   TypeTest:    undefined;
@@ -167,9 +174,23 @@ const ts = StyleSheet.create({
 
 function AppContent() {
   const { colors, isDark } = useTheme();
+  const navRef = React.useRef<any>(null);
+
+  // Cold-launch rehydration: if the store rehydrated with PARKED state, navigate there
+  const handleNavReady = React.useCallback(() => {
+    const phase = useParkingStore.getState().phase;
+    if (phase === 'PARKED' && navRef.current) {
+      const parkedLotId = useParkingStore.getState().lotId;
+      const parkedLotName = useParkingStore.getState().lot?.name;
+      navRef.current.navigate('Parked', {
+        lotId:   parkedLotId ?? '',
+        lotName: parkedLotName ?? undefined,
+      });
+    }
+  }, []);
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navRef} onReady={handleNavReady}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <Stack.Navigator
         initialRouteName="Splash"
@@ -188,12 +209,12 @@ function AppContent() {
         <Stack.Screen name="Home"      component={HomeScreen} />
         <Stack.Screen name="Search"    component={SearchScreen} />
         <Stack.Screen name="LotDetail" component={LotDetailScreen} />
-        <Stack.Screen name="Approach"  component={ApproachScreen} />
+        <Stack.Screen name="Approach"  component={DrivingScreen} />
         <Stack.Screen name="Parked"    component={ParkedScreen} />
+        <Stack.Screen name="Reroute"   component={RerouteScreen} />
 
-        {/* ── Legacy screens (Checkpoint 3 will replace these) ─────────── */}
-        <Stack.Screen name="Driving" component={DrivingScreen} />
-        <Stack.Screen name="Reroute" component={RerouteScreen} />
+        {/* ── Legacy Driving route — used by RerouteScreen → DrivingScreen ── */}
+        <Stack.Screen name="Driving"   component={DrivingScreen} />
 
         {/* ── Dev tools ────────────────────────────────────────────────── */}
         <Stack.Screen
@@ -220,12 +241,10 @@ export default function App() {
   if (!fontsLoaded) return null;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <ThemeProvider>
-          <AppContent />
-        </ThemeProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }
