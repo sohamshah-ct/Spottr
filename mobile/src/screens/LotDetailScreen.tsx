@@ -22,7 +22,7 @@ import MapView, { Marker, UrlTile, Circle } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-import { api, type Lot, type RowsResponse, type Space } from '../services/api';
+import { api, type Lot, type RowsResponse, type Space, type Zone } from '../services/api';
 import { colors, fonts } from '../theme';
 import BigNumberCount from '../components/BigNumberCount';
 import FreshnessLabel from '../components/FreshnessLabel';
@@ -206,8 +206,12 @@ export default function LotDetailScreen({ route, navigation }: Props) {
   const freshState = displayLot.freshness_state ?? 'D';
   const freshLabel = displayLot.freshness_label ?? 'Capacity only';
 
-  const destLat = displayLot.place_lat ?? displayLot.lat;
-  const destLng = displayLot.place_lng ?? displayLot.lng;
+  // Bug I: route to the best zone centroid (most open spaces), not the storefront pin
+  const sortedZones: Zone[] = (rowsData?.zones ?? [])
+    .filter((z): z is Zone => z.centroid_lat != null && z.centroid_lng != null)
+    .sort((a, b) => b.open_count - a.open_count);
+  const destLat = sortedZones[0]?.centroid_lat ?? displayLot.place_lat ?? displayLot.lat;
+  const destLng = sortedZones[0]?.centroid_lng ?? displayLot.place_lng ?? displayLot.lng;
   const dist = distanceLabel(displayLot.distance_meters);
 
   const mapRegion = regionFromLot(displayLot);

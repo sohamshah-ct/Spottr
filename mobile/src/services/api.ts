@@ -59,8 +59,19 @@ export interface LotsNearResponse {
   source?: string;
 }
 
+export interface Zone {
+  name: string;
+  stripe_count: number;
+  open_count: number;
+  confidence: number | null;
+  centroid_lat: number;
+  centroid_lng: number;
+}
+
 export interface RowsResponse {
   rows: LotRow[];
+  zones?: Zone[];
+  zone_count?: number;
   count: number;
   spaces_total: number;
   detection_age_seconds: number | null;
