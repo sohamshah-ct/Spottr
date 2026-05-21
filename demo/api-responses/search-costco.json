@@ -1,0 +1,39 @@
+{
+  "predictions": [
+    {
+      "place_id": "ChIJmZMfhCPT5okRdFl5Iy1UbFw",
+      "description": "Costco Wholesale, 131 Buckland Hills Dr, South Windsor, CT, USA",
+      "structured_formatting": {
+        "main_text": "Costco Wholesale",
+        "secondary_text": "131 Buckland Hills Dr, South Windsor, CT, USA"
+      },
+      "types": ["store", "point_of_interest", "establishment"],
+      "distance_meters": 42
+    },
+    {
+      "place_id": "ChIJr7dW5eXD5okR3bnklfWqXk8",
+      "description": "Costco Wholesale, 66 Connecticut Blvd, Newington, CT, USA",
+      "structured_formatting": {
+        "main_text": "Costco Wholesale",
+        "secondary_text": "66 Connecticut Blvd, Newington, CT, USA"
+      },
+      "types": ["store", "point_of_interest", "establishment"],
+      "distance_meters": 24180
+    },
+    {
+      "place_id": "ChIJ9WBNxjFw44kRzlHfEPCvpT4",
+      "description": "Costco Wholesale, 450 Universal Dr N, North Haven, CT, USA",
+      "structured_formatting": {
+        "main_text": "Costco Wholesale",
+        "secondary_text": "450 Universal Dr N, North Haven, CT, USA"
+      },
+      "types": ["store", "point_of_interest", "establishment"],
+      "distance_meters": 52300
+    }
+  ],
+  "_meta": {
+    "query": "Costco",
+    "source": "Google Places API (New) v1 — autocomplete with location bias lat=41.8419 lng=-72.5786",
+    "note": "Frozen production response captured 2026-05-19. Backend at spottr-api-production.up.railway.app decommissioned May 2026."
+  }
+}

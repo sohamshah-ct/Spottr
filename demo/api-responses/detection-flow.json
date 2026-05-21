@@ -1,0 +1,92 @@
+{
+  "_description": "Full pipeline output for Costco South Windsor CT (lot_id=1). This is the payload written to the database after a Modal GPU detection run. Captured 2026-05-19.",
+  "lot_id": 1,
+  "run_id": "modal-spottr-detect-2026-05-19-1422",
+  "pipeline": {
+    "bbox": {
+      "north": 41.8447,
+      "south": 41.8392,
+      "east": -72.5737,
+      "west": -72.5794,
+      "source": "building_inferred",
+      "width_m": 605,
+      "height_m": 606,
+      "area_deg2": 2.97e-5
+    },
+    "tile_fetch": {
+      "zoom": 19,
+      "tiles_x": 5,
+      "tiles_y": 5,
+      "total_tiles": 25,
+      "stitched_px": [6400, 6400],
+      "provider": "mapbox_satellite",
+      "tile_url_pattern": "https://api.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}@2x.png?access_token=REDACTED"
+    },
+    "yolov8_obb": {
+      "model": "yolov8x-obb",
+      "detections": 714,
+      "stripe_detections": 523,
+      "inference_ms": 4210
+    },
+    "sam2": {
+      "model": "sam2_hiera_large",
+      "raw_masks": 436,
+      "inference_ms": 18700
+    },
+    "area_filter": {
+      "min_px2": 50,
+      "max_px2": 2000,
+      "rejected_too_small": 89,
+      "rejected_too_large": 107,
+      "passing": 240
+    },
+    "occupancy": {
+      "open": 187,
+      "occupied": 453,
+      "total": 640,
+      "occupancy_pct": 0.708,
+      "method": "pixel_intensity_stripe_overlap"
+    },
+    "zones": [
+      { "label": "A", "open": 51, "total": 168, "centroid_lat": 41.8443, "centroid_lng": -72.5766 },
+      { "label": "B", "open": 44, "total": 156, "centroid_lat": 41.8430, "centroid_lng": -72.5766 },
+      { "label": "C", "open": 47, "total": 162, "centroid_lat": 41.8419, "centroid_lng": -72.5773 },
+      { "label": "D", "open": 45, "total": 154, "centroid_lat": 41.8407, "centroid_lng": -72.5773 }
+    ],
+    "spaces": [
+      {
+        "id": "s_000001",
+        "zone": "A",
+        "lat": 41.84438,
+        "lng": -72.57648,
+        "orientation_deg": 90,
+        "width_m": 2.7,
+        "length_m": 5.5,
+        "status": "open",
+        "confidence": 0.91
+      },
+      {
+        "id": "s_000002",
+        "zone": "A",
+        "lat": 41.84436,
+        "lng": -72.57624,
+        "orientation_deg": 90,
+        "width_m": 2.7,
+        "length_m": 5.5,
+        "status": "occupied",
+        "confidence": 0.88
+      }
+    ],
+    "_spaces_note": "Full spaces array has 640 entries. Only first 2 shown here for brevity.",
+    "timing": {
+      "tile_fetch_ms": 8400,
+      "yolov8_ms": 4210,
+      "sam2_ms": 18700,
+      "post_processing_ms": 920,
+      "total_ms": 32230
+    }
+  },
+  "_meta": {
+    "note": "Frozen production response captured 2026-05-19. This JSON structure is what Modal returns and what the backend writes to occupancy_snapshots. Backend decommissioned May 2026."
+  }
+}

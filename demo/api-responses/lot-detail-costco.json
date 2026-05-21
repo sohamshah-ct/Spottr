@@ -1,0 +1,82 @@
+{
+  "id": 1,
+  "name": "Costco Wholesale",
+  "lot_type": "warehouse_store",
+  "address": "131 Buckland Hills Dr",
+  "city": "South Windsor",
+  "state": "CT",
+  "lat": 41.8419,
+  "lng": -72.5786,
+  "total_spaces": 640,
+  "levels": 1,
+  "hours": null,
+  "pricing": "free",
+  "restrictions": "members only",
+  "bbox_north": 41.8447,
+  "bbox_south": 41.8392,
+  "bbox_east": -72.5737,
+  "bbox_west": -72.5794,
+  "bbox_source": "building_inferred",
+  "last_spot_detection": "2026-05-19T14:22:00Z",
+  "freshness_label": "Scanned 2 days ago",
+  "freshness_state": "C",
+  "open_spaces": 187,
+  "occupancy_pct": 0.71,
+  "confidence": "high",
+  "place_lat": 41.84194,
+  "place_lng": -72.57861,
+  "besttime_venue_id": null,
+  "zones": [
+    {
+      "label": "A",
+      "position_order": 0,
+      "space_count": 168,
+      "open": 51,
+      "total": 168,
+      "confidence": "high",
+      "occupancy_pct": 0.70,
+      "entrance_lat": 41.8443,
+      "entrance_lng": -72.5766,
+      "entrance_bearing": 180
+    },
+    {
+      "label": "B",
+      "position_order": 1,
+      "space_count": 156,
+      "open": 44,
+      "total": 156,
+      "confidence": "high",
+      "occupancy_pct": 0.72,
+      "entrance_lat": 41.8430,
+      "entrance_lng": -72.5766,
+      "entrance_bearing": 180
+    },
+    {
+      "label": "C",
+      "position_order": 2,
+      "space_count": 162,
+      "open": 47,
+      "total": 162,
+      "confidence": "high",
+      "occupancy_pct": 0.71,
+      "entrance_lat": 41.8419,
+      "entrance_lng": -72.5773,
+      "entrance_bearing": 90
+    },
+    {
+      "label": "D",
+      "position_order": 3,
+      "space_count": 154,
+      "open": 45,
+      "total": 154,
+      "confidence": "high",
+      "occupancy_pct": 0.71,
+      "entrance_lat": 41.8407,
+      "entrance_lng": -72.5773,
+      "entrance_bearing": 90
+    }
+  ],
+  "_meta": {
+    "note": "Frozen production response captured 2026-05-19. Backend at spottr-api-production.up.railway.app decommissioned May 2026."
+  }
+}

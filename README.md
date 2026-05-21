@@ -1,5 +1,16 @@
 # Spottr
 
+> **Project Status: Archived (May 2026)**
+>
+> Spottr was a solo summer project exploring real-time parking occupancy detection
+> from satellite imagery. The CV pipeline, zone partitioning, and mobile state machine
+> are all functional. The consumer app concept was archived after determining that live
+> data acquisition costs ($250+/satellite capture, $3–15K/yr for connected-vehicle
+> data) are structurally incompatible with consumer-app economics without enterprise
+> partnerships. The engineering remains as documented infrastructure.
+
+---
+
 **Satellite AI that counts open parking spots before you leave home.**
 
 Spottr uses computer vision on satellite imagery to detect and count individual
@@ -150,7 +161,70 @@ Home (map + lot list)
 
 ---
 
+## Why It Doesn't Ship
+
+Spottr's per-stall CV detection produces accurate counts from any commercial satellite
+tile. But satellite tiles served by Mapbox, Google, and similar providers are typically
+6 months to 4 years old — they're stitched archives, not live feeds. This means Spottr
+reports occupancy "as of when the tile was captured," not "right now."
+
+Real-time satellite tasking exists (Planet SkySat, Maxar WorldView) but starts at $250
+per capture for an area smaller than a single Costco lot, scaling to thousands per day
+if you wanted hourly refresh. Connected-vehicle trip-end aggregation (INRIX, formerly
+Wejo) offers real-time occupancy via anonymized phone GPS data but is sold via
+$3–15K/year enterprise contracts.
+
+The closest accessible live signal is Google Maps Popular Times (foot traffic at the
+anchor business). But that signal is the same data Google shows in its own app, which
+removes any consumer-app wedge against just opening Google Maps directly.
+
+Spottr remains a working demonstration of:
+- End-to-end CV pipeline (YOLO + SAM2) on satellite tiles
+- Zone-level spatial reasoning about parking lots
+- Multi-source geometry pipeline with provenance tracking
+- Mobile state machine with background location triggers
+
+These components are the interesting work. The product they're embedded in is not.
+
+---
+
+## What I Learned
+
+- **OSM data quality varies wildly.** About 60% of US parking lots have no
+  `amenity=parking` polygon at all. Building a bbox provenance system
+  (`osm_union` → `building_inferred` → `low_osm_coverage`) became more important
+  than any CV improvement.
+
+- **SAM2 segmentation is real but the area-filter step does more work than the model.**
+  Rejecting too-large/too-small segments by pixel area eliminates buildings, road
+  surfaces, and noise more reliably than the class labels. Pure ML rarely beats simple
+  geometric post-processing for production accuracy.
+
+- **Modal serverless GPU is the right primitive for one-shot CV jobs.** Cold start
+  ~60–120s, warm latency ~3s. Cheaper than always-on for sporadic detection traffic.
+  The `min_containers=0` setting is essential for dev economics.
+
+- **Live data is the bottleneck for every location app.** The solutions are: own the
+  lots (Premier Parking), license enterprise data (INRIX), or scrape the incumbent
+  (Outscraper for Google Popular Times). The third option puts you structurally below
+  the incumbent.
+
+- **Connecticut publishes free 7.6 cm/pixel aerial imagery via CT ECO.** Most states
+  have similar open imagery programs that are 5–10× sharper than commercial satellite
+  providers and completely unmarketed.
+
+- **Scope creep is the real failure mode.** Four rounds of bug fixes after Gate C
+  shipped, each one adding 30 minutes that turned into 90. Hard scope gates with
+  explicit "do not touch" lists were the only thing that kept the build moving.
+
+---
+
 ## Running Locally
+
+> **Note:** The hosted backend at `spottr-api-production.up.railway.app` was
+> decommissioned in May 2026. To run locally you'll need your own API keys for
+> Modal, Mapbox, and Google Places (see `backend/.env.example`) and to deploy
+> the backend yourself. Frozen sample API responses are in `demo/api-responses/`.
 
 ### Backend
 ```bash
@@ -215,18 +289,23 @@ spottr/
 
 ## Roadmap
 
-**V6 — Static geometry × live busyness**
+> All V6+ items below are **documented but not pursued**. The project is archived.
+> Full design notes for each item are in `CLAUDE.md`.
+
+**V6 — Static geometry × live busyness** *(documented, not pursued)*
 Multiply satellite space count (static denominator) by BestTime.app busyness index
 (live numerator) → probabilistic real-time availability without fresh imagery.
 `open_spaces ≈ total_spaces × (1 − busyness_index)` ± 15%.
 
-**V6.5 — Direct measurement partners**
+**V6.5 — Direct measurement partners** *(documented, not pursued)*
 TomTom / Parkopedia direct occupancy data as override where available.
-Commercial inquiry sent to Parkopedia 2026-05-18.
+Commercial inquiry sent to Parkopedia 2026-05-18. TomTom closed (automotive-only
+enterprise tier). Parkopedia response pending at archive time.
 
-**V7 — Spot-level live occupancy**
+**V7 — Spot-level live occupancy** *(documented, not pursued)*
 Connected-vehicle telemetry (Wejo / INRIX) spatial-joined to SAM2 stall polygons.
-Per-stall open/occupied → tap to navigate to specific coordinate.
+Per-stall open/occupied → tap to navigate to specific coordinate. Requires
+$50K–$250K/year data contracts or owned-sensor deployment at flagship lots.
 
 ---
 
