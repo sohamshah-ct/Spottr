@@ -1,0 +1,8 @@
+# Keep ZIP downloads to docs and demos only ? full code via git clone
+mobile/ export-ignore
+backend/ export-ignore
+modal/ export-ignore
+scripts/ export-ignore
+package-lock.json export-ignore
+yarn.lock export-ignore
+*.env.example export-ignore
